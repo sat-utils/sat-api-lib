@@ -1,6 +1,7 @@
 ## sat-api-lib
 
-[![Build Status](https://travis-ci.org/sat-utils/sat-api-lib.svg?branch=develop)](https://travis-ci.org/sat-utils/sat-api-lib)
+[![npm version](https://badge.fury.io/js/sat-api-lib.svg)](http://badge.fury.io/js/sat-api-lib)
+[![Build Status](https://travis-ci.org/sat-utils/sat-api-lib.svg?branch=master)](https://travis-ci.org/sat-utils/sat-api-lib)
 
 We use this library for creating sat-api using API Gateway. You can use this API to build a standalone API in other frameworks such as Express
 
