@@ -1,10 +1,15 @@
 language: node_js
 node_js:
-  - '4'
-
-
+- '4'
 install:
-  - npm install
-
+- npm install
 script:
-  - npm run test
+- npm run test
+deploy:
+  provider: npm
+  email: dev@developmentseed.org
+  api_key:
+    secure: LNd7Niem3m7ZwHJ5YdcBPsFO51fYKBhWJBpNlTs4/CnsmV2q4Ee7xOrBWRAuQ0D70dPSz37CjymNd1DIWWzErnLLRPUHlKZmfqbw3WqDeIELsX6xmp2zFgZD0laQJMywBJokUMbb76/BmyJ+fRyUCqUnm/+mwkye5w47OWKjWvCwX2b2TQ9yfSKFXyL1w+QAq/7L67vSxVqbYuPjaFUS9o2vjuTyNBRP2EKYDIFm4M2NefHmQCRQFdE2EVQhqygiysNzCNxqXoDACU+UkJXoOuqJylESmcl8JAUkVATIcmKYf3RRnTMn0Y+1y8UCLd+FycRu/99k+nyp9Crtfr0bRzs/Kn2iFrIBX8IYwgr/pM+xdjFyuIlSK2NQDnw2j9QaleE4lBANhDTGEnRErER1Ln3nq99pOd6h61nRI4E5wcu6RoUH8Pk4GUOf5fFNuhK1pIoo5lBMUvSKonb1zlUO1dFu+Ht+XjKrakep3LY9AhC7+OkziqeW3T0vMPSEPnu/g0g5JpbDNu/VSUAJT4P2GUwz5J0hsQCgU4gKmU37dW4AIxkCTQtGWEke6N4bG7kgjuTxBjLPZg37lEIkVIzYH2PtQm460ycoA8+/GuIszpurg+pyB9T8Vhq7W+ZlCwmJzV/z3jqVyAwhEO6GlPRg0f71Jf6MT1CSsqn11W1Xekc=
+  on:
+    tags: true
+    repo: sat-utils/sat-api-lib
