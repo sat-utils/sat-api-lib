@@ -16,7 +16,7 @@ We use this library for creating sat-api using API Gateway. You can use this API
 process.env.ES_HOST = 'link-to-my-elasticsearh.com';
 
 var express = require('express');
-var api = require('../index.js');
+var api = require('sat-api-lib');
 var app = express();
 
 app.get('/', function(req, res) {
