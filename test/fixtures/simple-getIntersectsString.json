@@ -53,7 +53,7 @@
         },
         "status": 200,
         "response": {
-            "took": 17,
+            "took": 55,
             "timed_out": false,
             "_shards": {
                 "total": 5,
