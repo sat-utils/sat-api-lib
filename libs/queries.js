@@ -4,6 +4,8 @@ var _ = require('lodash');
 var ejs = require('elastic.js');
 var gjv = require('geojson-validation');
 
+var geojsonError = new Error('Invalid Geojson');
+
 /**
  * @apiDefine search
  * @apiParam {string} [search] Supports Lucene search syntax for all available fields
@@ -16,7 +18,7 @@ var legacyParams = function (params, q) {
 
 var geojsonQueryBuilder = function (feature, query) {
   var shape = ejs.Shape(feature.geometry.type, feature.geometry.coordinates);
-  query = query.should(ejs.GeoShapeQuery()
+  query = query.must(ejs.GeoShapeQuery()
                           .field('data_geometry')
                           .shape(shape));
   return query;
@@ -31,17 +33,17 @@ var geojsonQueryBuilder = function (feature, query) {
  * with no spaces in between. Example: `contains=23,21`
 **/
 var contains = function (params, query) {
-  var correct_query = new RegExp('^[0-9\.\,\-]+$');
-  if (correct_query.test(params)) {
+  var correctQuery = new RegExp('^[0-9\.\,\-]+$');
+  if (correctQuery.test(params)) {
     var coordinates = params.split(',');
     coordinates = coordinates.map(parseFloat);
 
     if (coordinates[0] < -180 || coordinates[0] > 180) {
-      return err.incorrectCoordinatesError(params);
+      throw 'Invalid coordinates';
     }
 
     if (coordinates[1] < -90 || coordinates[1] > 90) {
-      return err.incorrectCoordinatesError(params);
+      throw 'Invalid coordinates';
     }
 
     var shape = ejs.Shape('circle', coordinates).radius('1km');
@@ -51,7 +53,7 @@ var contains = function (params, query) {
                             .shape(shape));
     return query;
   } else {
-    err.incorrectCoordinatesError(params);
+    throw 'Invalid coordinates';
   }
 };
 
@@ -64,11 +66,19 @@ var contains = function (params, query) {
 **/
 var intersects = function (geojson, query) {
   // if we receive an object, assume it's GeoJSON, if not, try and parse
+  if (typeof geojson === 'string') {
+    try {
+      geojson = JSON.parse(geojson);
+    } catch (e) {
+      throw geojsonError;
+    }
+  }
+
   if (gjv.valid(geojson)) {
     // If it is smaller than Nigeria use geohash
     // if (tools.areaNotLarge(geojson)) {
     if (geojson.type === 'FeatureCollection') {
-      for (var i=0; i < geojson.features.length; i++) {
+      for (var i = 0; i < geojson.features.length; i++) {
         var feature = geojson.features[i];
         query = geojsonQueryBuilder(feature, query);
       }
@@ -77,7 +87,7 @@ var intersects = function (geojson, query) {
     }
     return query;
   } else {
-    err.invalidGeoJsonError();
+    throw geojsonError;
   }
 };
 
@@ -130,7 +140,7 @@ module.exports = function (params, q) {
   // Do legacy search
   if (params.search) {
     return legacyParams(params, q);
-  };
+  }
 
   // contain search
   if (params.contains) {
@@ -145,7 +155,7 @@ module.exports = function (params, q) {
   }
 
   // select parameters that have _from or _to
-  _.forEach(params, function(value, key) {
+  _.forEach(params, function (value, key) {
     var field = _.replace(key, '_from', '');
     field = _.replace(field, '_to', '');
 
@@ -155,15 +165,14 @@ module.exports = function (params, q) {
         to: 'cloud_to',
         field: 'cloud_coverage'
       };
-    }
-    else if (_.endsWith(key, '_from')) {
+    } else if (_.endsWith(key, '_from')) {
       if (_.isUndefined(rangeFields[field])) {
         rangeFields[field] = {};
       }
 
       rangeFields[field]['from'] = key;
       rangeFields[field]['field'] = field;
-    } else if ( _.endsWith(key, '_to')) {
+    } else if (_.endsWith(key, '_to')) {
       if (_.isUndefined(rangeFields[field])) {
         rangeFields[field] = {};
       }
@@ -176,7 +185,7 @@ module.exports = function (params, q) {
   });
 
   // Range search
-  _.forEach(rangeFields, function(value, key) {
+  _.forEach(rangeFields, function (value, key) {
     query = rangeQuery(
       _.get(params, _.get(value, 'from')),
       _.get(params, _.get(value, 'to')),
@@ -195,7 +204,7 @@ module.exports = function (params, q) {
   }
 
   // For all items that were not matched pass the key to the term query
-  _.forEach(params, function(value, key) {
+  _.forEach(params, function (value, key) {
     query = matchQuery(key, value, query);
   });
 

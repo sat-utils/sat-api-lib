@@ -6,7 +6,7 @@
         "body": {
             "query": {
                 "bool": {
-                    "should": [
+                    "must": [
                         {
                             "geo_shape": {
                                 "data_geometry": {

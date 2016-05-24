@@ -13,20 +13,19 @@ var client = new elasticsearch.Client({
   requestTimeout: 50000  // milliseconds
 });
 
-
 var Search = function (event) {
   var params;
 
-  if (_.has(event, 'query')) {
+  if (_.has(event, 'query') && !_.isEmpty(event.query)) {
     params = event.query;
-  } else if (_.has(event, 'body')) {
+  } else if (_.has(event, 'body') && !_.isEmpty(event.body)) {
     params = event.body;
   } else {
-    throw('Event must either have query or body');
+    params = {};
   }
 
   // get page number
-  var page = parseInt((params.page) ? params.page: 1);
+  var page = parseInt((params.page) ? params.page : 1);
 
   // Build Elastic Search Query
   this.q = ejs.Request();
@@ -41,7 +40,6 @@ var Search = function (event) {
 };
 
 Search.prototype.buildSearch = function () {
-
   var fields;
 
   // if fields are included remove it from params
@@ -95,7 +93,7 @@ Search.prototype.buildAggregation = function () {
   if (_.has(this.params, 'fields')) {
     var fields = this.params.fields.split(',');
 
-    _.forEach(fields, function(field) {
+    _.forEach(fields, function (field) {
       if (_.has(aggr, field)) {
         self.q.agg(aggr[field](field).field(field));
       }
@@ -130,10 +128,14 @@ Search.prototype.legacy = function (callback) {
     self.params.search = sat;
   }
 
-  var search_params = this.buildSearch();
+  try {
+    var searchParams = this.buildSearch();
+  } catch (e) {
+    return callback(e, null);
+  }
 
   // limit search to only landsat
-  client.search(search_params).then(function (body) {
+  client.search(searchParams).then(function (body) {
     var response = [];
     var count = 0;
 
@@ -149,7 +151,7 @@ Search.prototype.legacy = function (callback) {
           skip: self.frm,
           limit: self.size,
           total: count
-        },
+        }
       },
       results: response
     };
@@ -162,9 +164,15 @@ Search.prototype.legacy = function (callback) {
 
 Search.prototype.simple = function (callback) {
   var self = this;
-  var search_params = this.buildSearch();
+  var searchParams;
 
-  client.search(search_params).then(function (body) {
+  try {
+    searchParams = this.buildSearch();
+  } catch (e) {
+    return callback(e, null);
+  }
+
+  client.search(searchParams).then(function (body) {
     var response = [];
     var count = 0;
 
@@ -193,10 +201,15 @@ Search.prototype.simple = function (callback) {
 
 Search.prototype.geojson = function (callback) {
   var self = this;
-  var search_params = this.buildSearch();
+  var searchParams;
 
-  client.search(search_params).then(function (body) {
+  try {
+    searchParams = this.buildSearch();
+  } catch (e) {
+    return callback(e, null);
+  }
 
+  client.search(searchParams).then(function (body) {
     var count = body.hits.total;
 
     var response = {
@@ -230,10 +243,15 @@ Search.prototype.geojson = function (callback) {
 };
 
 Search.prototype.count = function (callback) {
-  var search_params = this.buildAggregation();
+  var searchParams;
 
-  client.search(search_params).then(function (body) {
+  try {
+    searchParams = this.buildAggregation();
+  } catch (e) {
+    return callback(e, null);
+  }
 
+  client.search(searchParams).then(function (body) {
     var count = 0;
 
     count = body.hits.total;
@@ -243,7 +261,7 @@ Search.prototype.count = function (callback) {
         found: count,
         name: process.env.NAME || 'sat-api',
         license: 'CC0-1.0',
-        website: process.env.WEBSITE || 'https://api.developmentseed.org/satellites/',
+        website: process.env.WEBSITE || 'https://api.developmentseed.org/satellites/'
       },
       counts: body.aggregations
     };
@@ -252,8 +270,6 @@ Search.prototype.count = function (callback) {
   }, function (err) {
     return callback(err);
   });
-
 };
-
 
 module.exports = Search;
