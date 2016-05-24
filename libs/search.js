@@ -21,7 +21,7 @@ var Search = function (event) {
   } else if (_.has(event, 'body') && !_.isEmpty(event.body)) {
     params = event.body;
   } else {
-    throw (new Error('Event must either have query or body'));
+    params = {};
   }
 
   // get page number
