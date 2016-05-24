@@ -16,9 +16,9 @@ var client = new elasticsearch.Client({
 var Search = function (event) {
   var params;
 
-  if (_.has(event, 'query')) {
+  if (_.has(event, 'query') && !_.isEmpty(event.query)) {
     params = event.query;
-  } else if (_.has(event, 'body')) {
+  } else if (_.has(event, 'body') && !_.isEmpty(event.body)) {
     params = event.body;
   } else {
     throw (new Error('Event must either have query or body'));
@@ -210,7 +210,6 @@ Search.prototype.geojson = function (callback) {
   }
 
   client.search(searchParams).then(function (body) {
-
     var count = body.hits.total;
 
     var response = {
@@ -253,7 +252,6 @@ Search.prototype.count = function (callback) {
   }
 
   client.search(searchParams).then(function (body) {
-
     var count = 0;
 
     count = body.hits.total;
