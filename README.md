@@ -45,3 +45,6 @@ app.listen(port, function() {
   console.log('Listening on ' + port);
 });
 ```
+
+### About
+Sat API Lib was made by [Development Seed](http://developmentseed.org).
