@@ -146,7 +146,7 @@ Search.prototype.legacy = function (callback) {
 
     var r = {
       meta: {
-        author: 'Development Seed',
+        author: process.env.NAME || 'Development Seed',
         results: {
           skip: self.frm,
           limit: self.size,
@@ -184,9 +184,9 @@ Search.prototype.simple = function (callback) {
     var r = {
       meta: {
         found: count,
-        name: 'sat-api',
+        name: process.env.NAME || 'sat-api',
         license: 'CC0-1.0',
-        website: 'https://api.developmentseed.org/satellites/',
+        website: process.env.WEBSITE || 'https://api.developmentseed.org/satellites/'
         page: self.page,
         limit: self.size
       },
