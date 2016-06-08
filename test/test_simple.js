@@ -84,15 +84,43 @@ test.cb('root endpoint with POST date range', function (t) {
   });
 });
 
-test.cb('root endpoint POST intersects', function (t) {
-  var key = 'postDatRange';
+test.cb('root endpoint POST intersects with aoi_coverage_percentage 0', function (t) {
+  var key = 'postIntersects_coverage_zero';
   nock.back('simple-' + key + '.json', function (nockDone) {
     var search = new Search(payload[key]);
     search.simple(function (err, response) {
       nockDone();
-      t.is(response.meta.found, 454226);
+      t.is(response.meta.found, 237);
       t.is(response.meta.limit, 1);
       t.is(response.results.length, 1);
+      t.end(err);
+    });
+  });
+});
+
+test.cb('root endpoint POST intersects with aoi_coverage_percentage 50', function (t) {
+  var key = 'postIntersects_coverage_50';
+  nock.back('simple-' + key + '.json', function (nockDone) {
+    var search = new Search(payload[key]);
+    search.simple(function (err, response) {
+      nockDone();
+      t.is(response.meta.found, 8);
+      t.is(response.meta.limit, 10);
+      t.is(response.results.length, 8);
+      t.end(err);
+    });
+  });
+});
+
+test.cb('root endpoint POST intersects with aoi_coverage_percentage 100', function (t) {
+  var key = 'postIntersects_coverage_100';
+  nock.back('simple-' + key + '.json', function (nockDone) {
+    var search = new Search(payload[key]);
+    search.simple(function (err, response) {
+      nockDone();
+      t.is(response.meta.found, 3);
+      t.is(response.meta.limit, 10);
+      t.is(response.results.length, 3);
       t.end(err);
     });
   });
@@ -152,3 +180,4 @@ test.cb('root endpoint GET string intersects with satelline_name', function (t) 
     });
   });
 });
+
