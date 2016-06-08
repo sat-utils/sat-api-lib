@@ -83,6 +83,14 @@ var intersects = function (geojson, query) {
         query = geojsonQueryBuilder(feature, query);
       }
     } else {
+      if (geojson.type !== 'Feature') {
+        geojson = {
+          'type': 'Feature',
+          'properties': {},
+          'geometry': geojson
+        };
+      }
+
       query = geojsonQueryBuilder(geojson, query);
     }
     return query;

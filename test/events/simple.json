@@ -22,8 +22,9 @@
       "date_to": "2016-05-05"
     }
   },
-  "postIntersects": {
+  "postIntersects_coverage_zero": {
     "body": {
+      "aoi_coverage_percentage": 0,
       "intersects": {
         "type": "Feature",
         "properties": {},
@@ -50,6 +51,80 @@
               [
                 -76.5032958984375,
                 36.7520891569463
+              ]
+            ]
+          ]
+        }
+      }
+    }
+  },
+  "postIntersects_coverage_100": {
+    "body": {
+      "aoi_coverage_percentage": 100,
+      "limit": 10,
+      "intersects": {
+        "type": "Feature",
+        "properties": {},
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [
+                -77.354736328125,
+                37.38761749978395
+              ],
+              [
+                -77.354736328125,
+                37.75768707689704
+              ],
+              [
+                -76.849365234375,
+                37.75768707689704
+              ],
+              [
+                -76.849365234375,
+                37.38761749978395
+              ],
+              [
+                -77.354736328125,
+                37.38761749978395
+              ]
+            ]
+          ]
+        }
+      }
+    }
+  },
+  "postIntersects_coverage_50": {
+    "body": {
+      "aoi_coverage_percentage": 50,
+      "limit": 10,
+      "intersects": {
+        "type": "Feature",
+        "properties": {},
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [
+                -76.640625,
+                37.983174833513395
+              ],
+              [
+                -76.640625,
+                38.31149091244452
+              ],
+              [
+                -76.300048828125,
+                38.31149091244452
+              ],
+              [
+                -76.300048828125,
+                37.983174833513395
+              ],
+              [
+                -76.640625,
+                37.983174833513395
               ]
             ]
           ]

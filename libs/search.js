@@ -2,6 +2,8 @@
 
 var _ = require('lodash');
 var ejs = require('elastic.js');
+var area = require('turf-area');
+var intersect = require('turf-intersect');
 var elasticsearch = require('elasticsearch');
 
 var queries = require('./queries.js');
@@ -24,6 +26,13 @@ var Search = function (event) {
     params = {};
   }
 
+  this.aoiCoverage = null;
+
+  if (_.has(params, 'aoi_coverage_percentage')) {
+    this.aoiCoverage = params['aoi_coverage_percentage'];
+    params = _.omit(params, ['aoi_coverage_percentage']);
+  }
+
   // get page number
   var page = parseInt((params.page) ? params.page : 1);
 
@@ -37,6 +46,30 @@ var Search = function (event) {
   this.size = parseInt((params.limit) ? params.limit : 1);
   this.frm = (page - 1) * this.size;
   this.page = parseInt((params.skip) ? params.skip : page);
+};
+
+Search.prototype.calculateAoiCoverage = function (response) {
+
+  var self = this;
+  if (this.aoiCoverage && _.has(this.params, 'intersects')) {
+    var coverage = parseFloat(this.aoiCoverage);
+    var newResponse = [];
+    var aoiArea = area(self.params.intersects);
+
+    response.forEach(function (r) {
+      var intersectObj = intersect(self.params.intersects, r.data_geometry);
+      var intersectArea = area(intersectObj);
+      var percentage = (intersectArea / aoiArea) * 100;
+
+      if (percentage >= coverage) {
+        newResponse.push(r);
+      }
+    });
+
+    return newResponse;
+  } else {
+    return response;
+  }
 };
 
 Search.prototype.buildSearch = function () {
@@ -146,7 +179,7 @@ Search.prototype.legacy = function (callback) {
 
     var r = {
       meta: {
-        author: 'Development Seed',
+        author: process.env.NAME || 'Development Seed',
         results: {
           skip: self.frm,
           limit: self.size,
@@ -181,12 +214,19 @@ Search.prototype.simple = function (callback) {
       response.push(body.hits.hits[i]._source);
     }
 
+    response = self.calculateAoiCoverage(response);
+
+    // this is needed for cases where calculateAoiCoverage has returned a smaller value
+    if (response.length < self.size) {
+      count = response.length;
+    }
+
     var r = {
       meta: {
         found: count,
-        name: 'sat-api',
+        name: process.env.NAME || 'sat-api',
         license: 'CC0-1.0',
-        website: 'https://api.developmentseed.org/satellites/',
+        website: process.env.WEBSITE || 'https://api.developmentseed.org/satellites/',
         page: self.page,
         limit: self.size
       },
