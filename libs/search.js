@@ -48,8 +48,19 @@ var Search = function (event) {
   this.page = parseInt((params.skip) ? params.skip : page);
 };
 
-Search.prototype.calculateAoiCoverage = function (response) {
+var aoiCoveragePercentage = function (feature, scene, aoiArea) {
+  var intersectObj = intersect(feature, scene);
+  if (intersectObj === undefined) {
+    return 0;
+  }
 
+  var intersectArea = area(intersectObj);
+  var percentage = (intersectArea / aoiArea) * 100;
+
+  return percentage;
+};
+
+Search.prototype.calculateAoiCoverage = function (response) {
   var self = this;
   if (this.aoiCoverage && _.has(this.params, 'intersects')) {
     var coverage = parseFloat(this.aoiCoverage);
@@ -57,9 +68,18 @@ Search.prototype.calculateAoiCoverage = function (response) {
     var aoiArea = area(self.params.intersects);
 
     response.forEach(function (r) {
-      var intersectObj = intersect(self.params.intersects, r.data_geometry);
-      var intersectArea = area(intersectObj);
-      var percentage = (intersectArea / aoiArea) * 100;
+      var gj = self.params.intersects;
+      var percentage = 0;
+
+      if (gj.type === 'FeatureCollection') {
+        gj.features.forEach(function (f) {
+          percentage += aoiCoveragePercentage(f.geometry, r.data_geometry, aoiArea);
+        });
+      } else if (gj.type === 'Feature') {
+        percentage = aoiCoveragePercentage(gj.geometry, r.data_geometry, aoiArea);
+      } else if (gj.type === 'Polygon') {
+        percentage = aoiCoveragePercentage(gj, r.data_geometry, aoiArea);
+      }
 
       if (percentage >= coverage) {
         newResponse.push(r);
