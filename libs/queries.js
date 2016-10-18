@@ -93,6 +93,7 @@ var intersects = function (geojson, query) {
     if (geojson.type === 'FeatureCollection') {
       for (var i = 0; i < geojson.features.length; i++) {
         var feature = geojson.features[i];
+        validatePolygon(feature);
         query = geojsonQueryBuilder(feature, query);
       }
     } else {
@@ -103,6 +104,7 @@ var intersects = function (geojson, query) {
           'geometry': geojson
         };
       }
+      validatePolygon(geojson);
       query = geojsonQueryBuilder(geojson, query);
     }
     return query;
