@@ -6,6 +6,7 @@ var area = require('turf-area');
 var intersect = require('turf-intersect');
 var elasticsearch = require('elasticsearch');
 
+var logger = require('./logger');
 var queries = require('./queries.js');
 
 var client = new elasticsearch.Client({
@@ -31,6 +32,8 @@ var intersectsToObj = function (intersects) {
 var Search = function (event) {
   var params;
 
+  logger.debug('received event:', event);
+
   if (_.has(event, 'query') && !_.isEmpty(event.query)) {
     params = event.query;
   } else if (_.has(event, 'body') && !_.isEmpty(event.body)) {
@@ -55,6 +58,7 @@ var Search = function (event) {
   // set size, frm, params and page
 
   this.params = params;
+  logger.debug('Generated params:', params);
 
   this.size = parseInt((params.limit) ? params.limit : 1);
   this.frm = (page - 1) * this.size;
@@ -221,6 +225,7 @@ Search.prototype.legacy = function (callback) {
 
     return callback(null, r);
   }, function (err) {
+    logger.error(err);
     return callback(err);
   });
 };
@@ -265,6 +270,7 @@ Search.prototype.simple = function (callback) {
 
     return callback(null, r);
   }, function (err) {
+    logger.error(err);
     return callback(err);
   });
 };
@@ -308,6 +314,7 @@ Search.prototype.geojson = function (callback) {
 
     return callback(null, response);
   }, function (err) {
+    logger.error(err);
     return callback(err);
   });
 };
@@ -338,6 +345,7 @@ Search.prototype.count = function (callback) {
 
     return callback(null, r);
   }, function (err) {
+    logger.error(err);
     return callback(err);
   });
 };
