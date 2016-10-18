@@ -15,6 +15,15 @@ var client = new elasticsearch.Client({
   requestTimeout: 50000  // milliseconds
 });
 
+// converts string intersect to js object
+var intersectsToObj = function (intersects) {
+  if (_.isString(intersects)) {
+    intersects = JSON.parse(intersects);
+  }
+
+  return intersects;
+};
+
 var Search = function (event) {
   var params;
 
@@ -24,6 +33,10 @@ var Search = function (event) {
     params = event.body;
   } else {
     params = {};
+  }
+
+  if (_.has(params, 'intersects')) {
+    params.intersects = intersectsToObj(params.intersects);
   }
 
   this.aoiCoverage = null;
