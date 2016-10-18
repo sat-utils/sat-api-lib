@@ -10,6 +10,13 @@ We use this library for creating sat-api using API Gateway. You can use this API
     $ npm install
     $ npm run test
 
+We use [nock](https://github.com/node-nock/nock) to record and save API calls to the ElasticSearch instance to speed up tests and freeze results in time.
+
+To change the behaviour of Nock, update `NOCK_BACK_MODE` to `wild`, `dryrun`, `record` or `lockdown`. More info [here](https://github.com/node-nock/nock#modes).
+
+Default is `lockdown`.
+
+
 ### Express Example:
 
 ```js
