@@ -18,7 +18,11 @@ var client = new elasticsearch.Client({
 // converts string intersect to js object
 var intersectsToObj = function (intersects) {
   if (_.isString(intersects)) {
-    intersects = JSON.parse(intersects);
+    try {
+      intersects = JSON.parse(intersects);
+    } catch (e) {
+      throw new Error('Invalid Geojson');
+    }
   }
 
   return intersects;
@@ -33,10 +37,6 @@ var Search = function (event) {
     params = event.body;
   } else {
     params = {};
-  }
-
-  if (_.has(params, 'intersects')) {
-    params.intersects = intersectsToObj(params.intersects);
   }
 
   this.aoiCoverage = null;
@@ -76,6 +76,7 @@ var aoiCoveragePercentage = function (feature, scene, aoiArea) {
 Search.prototype.calculateAoiCoverage = function (response) {
   var self = this;
   if (this.aoiCoverage && _.has(this.params, 'intersects')) {
+    this.params.intersects = intersectsToObj(this.params.intersects);
     var coverage = parseFloat(this.aoiCoverage);
     var newResponse = [];
     var aoiArea = area(self.params.intersects);
