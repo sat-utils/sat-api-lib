@@ -2,6 +2,7 @@
 
 var _ = require('lodash');
 var ejs = require('elastic.js');
+var kinks = require('turf-kinks');
 var gjv = require('geojson-validation');
 
 var geojsonError = new Error('Invalid Geojson');
@@ -58,6 +59,20 @@ var contains = function (params, query) {
 };
 
 /**
+ * checks if the polygon is valid, e.g. does not have self intersecting
+ * points
+ * @param  {object} feature the geojson feature
+ * @return {boolean}         returns true if the polygon is valid otherwise false
+ */
+var validatePolygon = function (feature) {
+  var ipoints = kinks(feature);
+
+  if (ipoints.features.length > 0) {
+    throw new Error('Invalid Polgyon: self-intersecting');
+  }
+};
+
+/**
  * @apiDefine intersects
  * @apiParam {string/geojson} [intersects] Evaluates whether the give geojson is intersects
  * with any landsat images.
@@ -75,8 +90,6 @@ var intersects = function (geojson, query) {
   }
 
   if (gjv.valid(geojson)) {
-    // If it is smaller than Nigeria use geohash
-    // if (tools.areaNotLarge(geojson)) {
     if (geojson.type === 'FeatureCollection') {
       for (var i = 0; i < geojson.features.length; i++) {
         var feature = geojson.features[i];
@@ -90,7 +103,6 @@ var intersects = function (geojson, query) {
           'geometry': geojson
         };
       }
-
       query = geojsonQueryBuilder(geojson, query);
     }
     return query;
