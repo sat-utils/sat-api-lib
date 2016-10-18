@@ -124,8 +124,6 @@ Search.prototype.buildSearch = function () {
     this.q = this.q.sort('date', 'desc');
   }
 
-  // console.log(JSON.stringify(q.toJSON()))
-
   return {
     index: process.env.ES_INDEX || 'sat-api',
     body: this.q,
@@ -173,8 +171,6 @@ Search.prototype.buildAggregation = function () {
   } else {
     this.q.query(ejs.MatchAllQuery());
   }
-
-  // console.log(JSON.stringify(q.toJSON()))
 
   return {
     index: process.env.ES_INDEX || 'sat-api',
