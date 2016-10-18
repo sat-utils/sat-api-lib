@@ -13,6 +13,18 @@ test.before('setup nock', function (t) {
   nock.back.setMode(process.env.NOCK_BACK_MODE || 'lockdown');
 });
 
+test.cb('test with invalid polygon', function (t) {
+  var key = 'simpleGet';
+  nock.back('simple-' + key + '.json', function (nockDone) {
+    var search = new Search(payload.getSelfIntersectingPolygon);
+    search.simple(function (err, response) {
+      nockDone();
+      t.is(err.message, 'Invalid Polgyon: self-intersecting');
+      t.end();
+    });
+  });
+});
+
 test.cb('root endpoint with simple GET should return 1 result', function (t) {
   var key = 'simpleGet';
   nock.back('simple-' + key + '.json', function (nockDone) {
