@@ -40,11 +40,11 @@ var contains = function (params, query) {
     coordinates = coordinates.map(parseFloat);
 
     if (coordinates[0] < -180 || coordinates[0] > 180) {
-      throw 'Invalid coordinates';
+      throw new Error('Invalid coordinates');
     }
 
     if (coordinates[1] < -90 || coordinates[1] > 90) {
-      throw 'Invalid coordinates';
+      throw new Error('Invalid coordinates');
     }
 
     var shape = ejs.Shape('circle', coordinates).radius('1km');
@@ -54,7 +54,7 @@ var contains = function (params, query) {
                             .shape(shape));
     return query;
   } else {
-    throw 'Invalid coordinates';
+    throw new Error('Invalid coordinates');
   }
 };
 
