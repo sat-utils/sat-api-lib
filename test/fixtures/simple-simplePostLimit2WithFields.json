@@ -5,7 +5,7 @@
         "path": "/sat-api/_search?size=2&from=0&_source=date%2Cthumbnail",
         "body": {
             "query": {
-                "bool": {}
+                "match_all":{}
             },
             "sort": [
                 {
