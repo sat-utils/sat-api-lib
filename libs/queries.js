@@ -1,62 +1,9 @@
-'use strict';
-
 var _ = require('lodash');
-var ejs = require('elastic.js');
+
 var kinks = require('turf-kinks');
 var gjv = require('geojson-validation');
 
 var geojsonError = new Error('Invalid Geojson');
-
-/**
- * @apiDefine search
- * @apiParam {string} [search] Supports Lucene search syntax for all available fields
- * in the landsat meta data. <br> If search is used, all other parameters are ignored.
-**/
-var legacyParams = function (params, q) {
-  q.query(ejs.QueryStringQuery(params.search));
-  return q;
-};
-
-var geojsonQueryBuilder = function (feature, query) {
-  var shape = ejs.Shape(feature.geometry.type, feature.geometry.coordinates);
-  query = query.must(ejs.GeoShapeQuery()
-                          .field('data_geometry')
-                          .shape(shape));
-  return query;
-};
-
-/**
- * @apiDefine contains
- * @apiParam {string} [contains] Evaluates whether the given point is within the
- * bounding box of a landsat image.
- *
- * Accepts `latitude` and `longitude`. They have to be separated by a `,`
- * with no spaces in between. Example: `contains=23,21`
-**/
-var contains = function (params, query) {
-  var correctQuery = new RegExp('^[0-9\.\,\-]+$');
-  if (correctQuery.test(params)) {
-    var coordinates = params.split(',');
-    coordinates = coordinates.map(parseFloat);
-
-    if (coordinates[0] < -180 || coordinates[0] > 180) {
-      throw new Error('Invalid coordinates');
-    }
-
-    if (coordinates[1] < -90 || coordinates[1] > 90) {
-      throw new Error('Invalid coordinates');
-    }
-
-    var shape = ejs.Shape('circle', coordinates).radius('1km');
-
-    query = query.must(ejs.GeoShapeQuery()
-                            .field('data_geometry')
-                            .shape(shape));
-    return query;
-  } else {
-    throw new Error('Invalid coordinates');
-  }
-};
 
 /**
  * checks if the polygon is valid, e.g. does not have self intersecting
@@ -72,14 +19,87 @@ var validatePolygon = function (feature) {
   }
 };
 
-/**
- * @apiDefine intersects
- * @apiParam {string/geojson} [intersects] Evaluates whether the give geojson is intersects
- * with any landsat images.
- *
- * Accepts valid geojson.
-**/
-var intersects = function (geojson, query) {
+var legacyParams = function (params) {
+  return {
+    query_string: {
+      query: params.search
+    }
+  };
+};
+
+var termQuery = function (field, value) {
+  var query = {
+    match: {}
+  };
+
+  query.match[field] = {
+    query: value,
+    lenient: false,
+    zero_terms_query: 'none'
+  };
+
+  return query;
+};
+
+var rangeQuery = function (field, frm, to) {
+  var query = {
+    range: {}
+  };
+
+  query.range[field] = {
+    gte: frm,
+    lte: to
+  };
+
+  return query;
+};
+
+var geoShaperQuery = function (field, geometry) {
+  var _geometry = Object.assign({}, geometry);
+
+  var query = {
+    geo_shape: {}
+  };
+
+  if (_geometry.type === 'Polygon') {
+    _geometry.type = _geometry.type.toLowerCase();
+  }
+
+  query.geo_shape[field] = {
+    shape: _geometry
+  };
+
+  return query;
+};
+
+var contains = function (params) {
+  var correctQuery = new RegExp('^[0-9\.\,\-]+$');
+  if (correctQuery.test(params)) {
+    var coordinates = params.split(',');
+    coordinates = coordinates.map(parseFloat);
+
+    if (coordinates[0] < -180 || coordinates[0] > 180) {
+      throw new Error('Invalid coordinates');
+    }
+
+    if (coordinates[1] < -90 || coordinates[1] > 90) {
+      throw new Error('Invalid coordinates');
+    }
+
+    return geoShaperQuery(
+      'data_geometry',
+      {
+        type: 'circle',
+        coordinates: coordinates,
+        radius: '1km'
+      }
+    );
+  } else {
+    throw new Error('Invalid coordinates');
+  }
+};
+
+var intersects = function (geojson, queries) {
   // if we receive an object, assume it's GeoJSON, if not, try and parse
   if (typeof geojson === 'string') {
     try {
@@ -94,7 +114,7 @@ var intersects = function (geojson, query) {
       for (var i = 0; i < geojson.features.length; i++) {
         var feature = geojson.features[i];
         validatePolygon(feature);
-        query = geojsonQueryBuilder(feature, query);
+        queries.push(geoShaperQuery('data_geometry', feature.geometry));
       }
     } else {
       if (geojson.type !== 'Feature') {
@@ -105,46 +125,29 @@ var intersects = function (geojson, query) {
         };
       }
       validatePolygon(geojson);
-      query = geojsonQueryBuilder(geojson, query);
+
+      queries.push(geoShaperQuery('data_geometry', geojson.geometry));
     }
-    return query;
+    return queries;
   } else {
     throw geojsonError;
   }
 };
 
-var rangeQuery = function (from, to, field, query) {
-  if (!_.isUndefined(from) && _.isString(from)) {
-    from = _.toLower(from);
-  }
-
-  if (!_.isUndefined(to) && _.isString(to)) {
-    to = _.toLower(to);
-  }
-
-  if (!_.isUndefined(from) && !_.isUndefined(to)) {
-    return query.must(ejs.RangeQuery(field).gte(from).lte(to));
-  }
-
-  if (!_.isUndefined(from)) {
-    return query.must(ejs.RangeQuery(field).gte(from));
-  }
-
-  if (!_.isUndefined(to)) {
-    return query.must(ejs.RangeQuery(field).lte(to));
-  }
-};
-
-var matchQuery = function (field, param, query) {
-  return query.must(ejs.MatchQuery(field, param)
-                       .lenient(false)
-                       .zeroTermsQuery('none'));
-};
-
-module.exports = function (params, q) {
-  var query = ejs.BoolQuery();
+module.exports = function (params) {
+  var response = {
+    query: { match_all: {} },
+    sort: [
+      {date: {order: 'desc'}}
+    ]
+  };
+  var queries = [];
 
   params = _.omit(params, ['limit', 'page', 'skip']);
+
+  if (Object.keys(params).length === 0) {
+    return response;
+  }
 
   var rangeFields = {};
 
@@ -161,18 +164,20 @@ module.exports = function (params, q) {
 
   // Do legacy search
   if (params.search) {
-    return legacyParams(params, q);
+    response.query = legacyParams(params);
+    return response;
   }
 
   // contain search
   if (params.contains) {
-    query = contains(params.contains, query);
+    queries.push(contains(params.contains));
+  } else {
     params = _.omit(params, ['contains']);
   }
 
   // intersects search
   if (params.intersects) {
-    query = intersects(params.intersects, query);
+    queries = intersects(params.intersects, queries);
     params = _.omit(params, ['intersects']);
   }
 
@@ -208,11 +213,12 @@ module.exports = function (params, q) {
 
   // Range search
   _.forEach(rangeFields, function (value, key) {
-    query = rangeQuery(
-      _.get(params, _.get(value, 'from')),
-      _.get(params, _.get(value, 'to')),
-      value['field'],
-      query
+    queries.push(
+      rangeQuery(
+        value.field,
+        _.get(params, _.get(value, 'from')),
+        _.get(params, _.get(value, 'to'))
+      )
     );
     params = _.omit(params, [_.get(value, 'from'), _.get(value, 'to')]);
   });
@@ -220,15 +226,25 @@ module.exports = function (params, q) {
   // Term search
   for (var i = 0; i < termFields.length; i++) {
     if (_.has(params, termFields[i].parameter)) {
-      query = matchQuery(termFields[i].field, params[termFields[i].parameter], query);
-      params = _.omit(params, [termFields[i].parameter]);
+      queries.push(
+        termQuery(
+          termFields[i].field,
+          params[termFields[i].parameter]
+        )
+      );
     }
   }
 
   // For all items that were not matched pass the key to the term query
   _.forEach(params, function (value, key) {
-    query = matchQuery(key, value, query);
+    queries.push(termQuery(key, value));
   });
 
-  return q.query(query);
+  response.query = {
+    bool: {
+      must: queries
+    }
+  };
+
+  return response;
 };
