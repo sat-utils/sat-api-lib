@@ -1,13 +1,14 @@
 'use strict';
 
 var _ = require('lodash');
-var ejs = require('elastic.js');
+var moment = require('moment');
 var area = require('turf-area');
 var intersect = require('turf-intersect');
 var elasticsearch = require('elasticsearch');
 
 var logger = require('./logger');
-var queries = require('./queries.js');
+var queries = require('./queries');
+var aggregations = require('./aggregations');
 
 var client = new elasticsearch.Client({
   host: process.env.ES_HOST || 'localhost:9200',
@@ -32,7 +33,8 @@ var intersectsToObj = function (intersects) {
 var Search = function (event) {
   var params;
 
-  logger.debug('received event:', event);
+  logger.debug('received query:', event.query);
+  logger.debug('received body:', event.body);
 
   if (_.has(event, 'query') && !_.isEmpty(event.query)) {
     params = event.query;
@@ -51,11 +53,6 @@ var Search = function (event) {
 
   // get page number
   var page = parseInt((params.page) ? params.page : 1);
-
-  // Build Elastic Search Query
-  this.q = ejs.Request();
-
-  // set size, frm, params and page
 
   this.params = params;
   logger.debug('Generated params:', params);
@@ -119,19 +116,9 @@ Search.prototype.buildSearch = function () {
     this.params = _.omit(this.params, ['fields']);
   }
 
-  if (Object.keys(this.params).length > 0) {
-    this.q = queries(this.params, this.q);
-  } else {
-    this.q.query(ejs.MatchAllQuery());
-  }
-
-  if (this.q) {
-    this.q = this.q.sort('date', 'desc');
-  }
-
   return {
     index: process.env.ES_INDEX || 'sat-api',
-    body: this.q,
+    body: queries(this.params),
     size: this.size,
     from: this.frm,
     _source: fields
@@ -139,47 +126,38 @@ Search.prototype.buildSearch = function () {
 };
 
 Search.prototype.buildAggregation = function () {
-  var self = this;
-
-  var dateHistogram = function (name) {
-    return ejs.DateHistogramAggregation(name + '_histogram').format('YYYY-MM-DD').interval('day');
-  };
-  var termsAggregation = function (name) {
-    return ejs.TermsAggregation('terms_' + name);
-  };
-
-  var aggr = {
-    date: dateHistogram,
-    satellite_name: termsAggregation,
-    latitude_band: termsAggregation,
-    utm_zone: termsAggregation,
-    product_path: termsAggregation,
-    grid_square: termsAggregation,
-    sensing_orbit_number: termsAggregation,
-    sensing_orbit_direction: termsAggregation
-  };
+  var aggrs = {aggs: {}};
 
   if (_.has(this.params, 'fields')) {
     var fields = this.params.fields.split(',');
 
     _.forEach(fields, function (field) {
-      if (_.has(aggr, field)) {
-        self.q.agg(aggr[field](field).field(field));
+      if (field === 'date') {
+        aggrs.aggs = _.assign(aggrs.aggs, aggregations.date(field));
+      } else {
+        aggrs.aggs = _.assign(aggrs.aggs, aggregations.term(field));
       }
     });
 
     this.params = _.omit(this.params, ['fields']);
   }
 
-  if (Object.keys(this.params).length > 0) {
-    this.q = queries(this.params, this.q);
-  } else {
-    this.q.query(ejs.MatchAllQuery());
-  }
+  return {
+    index: process.env.ES_INDEX || 'sat-api',
+    body: _.assign({}, aggrs, queries(this.params)),
+    size: 0
+  };
+};
+
+Search.prototype.buildHealthAggregation = function () {
+  // only aggregate by date field
+  var aggrs = {
+    aggs: aggregations.date('date')
+  };
 
   return {
     index: process.env.ES_INDEX || 'sat-api',
-    body: this.q,
+    body: _.assign({}, aggrs, queries(this.params)),
     size: 0
   };
 };
@@ -239,6 +217,8 @@ Search.prototype.simple = function (callback) {
   } catch (e) {
     return callback(e, null);
   }
+
+  logger.info(JSON.stringify(searchParams));
 
   client.search(searchParams).then(function (body) {
     var response = [];
@@ -341,6 +321,77 @@ Search.prototype.count = function (callback) {
         website: process.env.WEBSITE || 'https://api.developmentseed.org/satellites/'
       },
       counts: body.aggregations
+    };
+
+    return callback(null, r);
+  }, function (err) {
+    logger.error(err);
+    return callback(err);
+  });
+};
+
+Search.prototype.health = function (callback) {
+  var self = this;
+  var searchParams;
+
+  try {
+    searchParams = this.buildHealthAggregation();
+  } catch (e) {
+    return callback(e, null);
+  }
+
+  client.search(searchParams).then(function (body) {
+    var limit = 3000;
+    var count = 0;
+
+    var missingScenes = [];
+    var missingDates = [];
+
+    if (_.get(self.params, 'satellite_name', null) === 'sentinel') {
+      limit = 2000;
+    }
+
+    var start = moment('2015-10-01');
+    var end = moment();
+    var dates = [];
+
+    while (start <= end) {
+      dates.push(start.format('YYYY-MM-DD'));
+      start.add(1, 'day');
+    }
+
+    // iterate through all dates
+    body.aggregations.scenes_by_date.buckets.map(b => {
+      dates.push(b.key_as_string);
+
+      if (b.doc_count < limit) {
+        missingScenes.push({
+          date: b.key_as_string,
+          probably_missing: limit - b.doc_count
+        });
+      }
+    });
+
+    while (start <= end) {
+      if (dates.indexOf(start.format('YYYY-MM-DD')) === -1) {
+        missingDates.push(start.format('YYYY-MM-DD'));
+      }
+      start.add(1, 'day');
+    }
+
+    count = body.hits.total;
+
+    var r = {
+      meta: {
+        total_dates: body.aggregations.scenes_by_date.buckets.length,
+        dates_with_missing_scenes: missingScenes.length,
+        percentage: missingScenes.length / body.aggregations.scenes_by_date.buckets.length * 100,
+        name: process.env.NAME || 'sat-api',
+        license: 'CC0-1.0',
+        website: process.env.WEBSITE || 'https://api.developmentseed.org/satellites/'
+      },
+      missing_scenes: missingScenes,
+      missing_dates: missingDates
     };
 
     return callback(null, r);
