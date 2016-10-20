@@ -5,7 +5,7 @@
         "path": "/sat-api/_search?size=2&from=0",
         "body": {
             "query": {
-                "bool": {}
+                "match_all": {}
             },
             "sort": [
                 {

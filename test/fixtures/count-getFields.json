@@ -15,11 +15,12 @@
                         "field": "satellite_name"
                     }
                 },
-                "date_histogram": {
+                "scenes_by_date": {
                     "date_histogram": {
-                        "format": "YYYY-MM-DD",
+                        "format": "YYYY-MM-dd",
                         "interval": "day",
-                        "field": "date"
+                        "field": "date",
+                        "order":{"_key":"desc"}
                     }
                 }
             },

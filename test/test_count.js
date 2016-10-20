@@ -9,7 +9,7 @@ var payload = require('./events/count.json');
 
 test.before('setup nock', function (t) {
   nock.back.fixtures = path.join(__dirname, '/fixtures');
-  nock.back.setMode('lockdown');
+  nock.back.setMode(process.env.NOCK_BACK_MODE || 'lockdown');
 });
 
 test.cb('count endpoint with simple GET should return 1 result', function (t) {
