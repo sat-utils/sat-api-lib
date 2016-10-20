@@ -116,6 +116,10 @@ Search.prototype.buildSearch = function () {
     this.params = _.omit(this.params, ['fields']);
   }
 
+  if (this.satelliteName) {
+    this.params.satellite_name = this.satelliteName;
+  }
+
   return {
     index: process.env.ES_INDEX || 'sat-api',
     body: queries(this.params),
@@ -208,6 +212,16 @@ Search.prototype.legacy = function (callback) {
   });
 };
 
+Search.prototype.landsat = function (callback) {
+  this.satelliteName = 'landsat';
+  return this.simple(callback);
+};
+
+Search.prototype.sentinel = function (callback) {
+  this.satelliteName = 'sentinel';
+  return this.simple(callback);
+};
+
 Search.prototype.simple = function (callback) {
   var self = this;
   var searchParams;
@@ -218,7 +232,7 @@ Search.prototype.simple = function (callback) {
     return callback(e, null);
   }
 
-  logger.info(JSON.stringify(searchParams));
+  logger.debug(JSON.stringify(searchParams));
 
   client.search(searchParams).then(function (body) {
     var response = [];
