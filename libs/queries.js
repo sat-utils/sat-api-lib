@@ -171,7 +171,6 @@ module.exports = function (params) {
   // contain search
   if (params.contains) {
     queries.push(contains(params.contains));
-  } else {
     params = _.omit(params, ['contains']);
   }
 
