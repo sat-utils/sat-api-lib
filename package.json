@@ -19,6 +19,7 @@
   "dependencies": {
     "elasticsearch": "^11.0.1",
     "geojson-validation": "^0.1.6",
+    "http-aws-es": "^1.1.3",
     "lodash": "^4.12.0",
     "moment": "^2.15.1",
     "turf-area": "^3.0.1",

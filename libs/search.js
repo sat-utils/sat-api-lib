@@ -10,12 +10,24 @@ var logger = require('./logger');
 var queries = require('./queries');
 var aggregations = require('./aggregations');
 
-var client = new elasticsearch.Client({
+var esConfig = {
   host: process.env.ES_HOST || 'localhost:9200',
 
   // Note that this doesn't abort the query.
   requestTimeout: 50000  // milliseconds
-});
+}
+
+// use AWS Sing4 if aws-access-key is provided
+if (_.has(process.env, 'AWS_ACCESS_KEY_ID') && _.has(process.env, 'AWS_SECRET_ACCESS_KEY')) {
+  esConfig.connectionClass = require('http-aws-es');
+  esConfig.amazonES = {
+    region: process.env.AWS_DEFAULT_REGION || 'us-east-1',
+    accessKey: process.env.AWS_ACCESS_KEY_ID,
+    secretKey: process.env.AWS_SECRET_ACCESS_KEY
+  }
+}
+
+var client = new elasticsearch.Client(esConfig);
 
 // converts string intersect to js object
 var intersectsToObj = function (intersects) {
