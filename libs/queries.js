@@ -182,8 +182,8 @@ module.exports = function (params) {
 
   // select parameters that have _from or _to
   _.forEach(params, function (value, key) {
-    var field = _.replace(key, '_from', '');
-    field = _.replace(field, '_to', '');
+    var field = key.replace('_from', '');
+    field = field.replace('_to', '');
 
     if (key === 'cloud_from' || key === 'cloud_to') {
       rangeFields['cloud'] = {
