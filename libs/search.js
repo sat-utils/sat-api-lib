@@ -27,6 +27,7 @@ if (_.has(process.env, 'AWS_ACCESS_KEY_ID') && _.has(process.env, 'AWS_SECRET_AC
   }
 }
 
+
 var client = new elasticsearch.Client(esConfig);
 
 // converts string intersect to js object
@@ -42,7 +43,7 @@ var intersectsToObj = function (intersects) {
   return intersects;
 };
 
-var Search = function (event) {
+var Search = function (event, customClient) {
   var params;
 
   logger.debug('received query:', event.query);
@@ -72,6 +73,8 @@ var Search = function (event) {
   this.size = parseInt((params.limit) ? params.limit : 1);
   this.frm = (page - 1) * this.size;
   this.page = parseInt((params.skip) ? params.skip : page);
+
+  this.client = customClient || client;
 };
 
 var aoiCoveragePercentage = function (feature, scene, aoiArea) {
@@ -196,7 +199,7 @@ Search.prototype.legacy = function (callback) {
   }
 
   // limit search to only landsat
-  client.search(searchParams).then(function (body) {
+  this.client.search(searchParams).then(function (body) {
     var response = [];
     var count = 0;
 
@@ -246,7 +249,7 @@ Search.prototype.simple = function (callback) {
 
   logger.debug(JSON.stringify(searchParams));
 
-  client.search(searchParams).then(function (body) {
+  this.client.search(searchParams).then(function (body) {
     var response = [];
     var count = 0;
 
@@ -291,7 +294,7 @@ Search.prototype.geojson = function (callback) {
     return callback(e, null);
   }
 
-  client.search(searchParams).then(function (body) {
+  this.client.search(searchParams).then(function (body) {
     var count = body.hits.total;
 
     var response = {
@@ -334,7 +337,7 @@ Search.prototype.count = function (callback) {
     return callback(e, null);
   }
 
-  client.search(searchParams).then(function (body) {
+  this.client.search(searchParams).then(function (body) {
     var count = 0;
 
     count = body.hits.total;
@@ -366,7 +369,7 @@ Search.prototype.health = function (callback) {
     return callback(e, null);
   }
 
-  client.search(searchParams).then(function (body) {
+  this.client.search(searchParams).then(function (body) {
     var limit = 3000;
     var count = 0;
 
