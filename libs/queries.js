@@ -136,10 +136,10 @@ var intersects = function (geojson, queries) {
 
 module.exports = function (params) {
   var response = {
-    query: { match_all: {} },
-    sort: [
-      {date: {order: 'desc'}}
-    ]
+    query: { match_all: {} }
+    //sort: [
+    //  {start: {order: 'desc'}}
+    //]
   };
   var queries = [];
 
@@ -153,13 +153,13 @@ module.exports = function (params) {
 
   var termFields = [
     {
-      parameter: 'scene_id',
-      field: 'scene_id'
+      parameter: 'id',
+      field: 'id'
     },
-    {
-      parameter: 'sensor',
-      field: 'satellite_name'
-    }
+    /*{
+      parameter: 'instrument',
+      field: 'instrument'
+    }*/
   ];
 
   // Do legacy search

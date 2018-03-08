@@ -27,7 +27,6 @@ if (_.has(process.env, 'AWS_ACCESS_KEY_ID') && _.has(process.env, 'AWS_SECRET_AC
   }
 }
 
-
 var client = new elasticsearch.Client(esConfig);
 
 // converts string intersect to js object
@@ -68,7 +67,7 @@ var Search = function (event, customClient) {
   var page = parseInt((params.page) ? params.page : 1);
 
   this.params = params;
-  logger.debug('Generated params:', params);
+  console.log('Generated params:', params);
 
   this.size = parseInt((params.limit) ? params.limit : 1);
   this.frm = (page - 1) * this.size;
@@ -131,12 +130,8 @@ Search.prototype.buildSearch = function () {
     this.params = _.omit(this.params, ['fields']);
   }
 
-  if (this.satelliteName) {
-    this.params.satellite_name = this.satelliteName;
-  }
-
   return {
-    index: process.env.ES_INDEX || 'sat-api',
+    index: 'items',
     body: queries(this.params),
     size: this.size,
     from: this.frm,
@@ -144,100 +139,8 @@ Search.prototype.buildSearch = function () {
   };
 };
 
-Search.prototype.buildAggregation = function () {
-  var aggrs = {aggs: {}};
 
-  if (_.has(this.params, 'fields')) {
-    var fields = this.params.fields.split(',');
-
-    _.forEach(fields, function (field) {
-      if (field === 'date') {
-        aggrs.aggs = _.assign(aggrs.aggs, aggregations.date(field));
-      } else {
-        aggrs.aggs = _.assign(aggrs.aggs, aggregations.term(field));
-      }
-    });
-
-    this.params = _.omit(this.params, ['fields']);
-  }
-
-  return {
-    index: process.env.ES_INDEX || 'sat-api',
-    body: _.assign({}, aggrs, queries(this.params)),
-    size: 0
-  };
-};
-
-Search.prototype.buildHealthAggregation = function () {
-  // only aggregate by date field
-  var aggrs = {
-    aggs: aggregations.date('date')
-  };
-
-  return {
-    index: process.env.ES_INDEX || 'sat-api',
-    body: _.assign({}, aggrs, queries(this.params)),
-    size: 0
-  };
-};
-
-Search.prototype.legacy = function (callback) {
-  var self = this;
-
-  // Add landsat to the search parameter
-  var sat = 'satellite_name:landsat';
-  if (self.params.search && self.params.search.length > 0) {
-    self.params.search = self.params.search + ' AND ' + sat;
-  } else {
-    self.params.search = sat;
-  }
-
-  try {
-    var searchParams = this.buildSearch();
-  } catch (e) {
-    return callback(e, null);
-  }
-
-  // limit search to only landsat
-  this.client.search(searchParams).then(function (body) {
-    var response = [];
-    var count = 0;
-
-    count = body.hits.total;
-    for (var i = 0; i < body.hits.hits.length; i++) {
-      response.push(body.hits.hits[i]._source);
-    }
-
-    var r = {
-      meta: {
-        author: process.env.NAME || 'Development Seed',
-        results: {
-          skip: self.frm,
-          limit: self.size,
-          total: count
-        }
-      },
-      results: response
-    };
-
-    return callback(null, r);
-  }, function (err) {
-    logger.error(err);
-    return callback(err);
-  });
-};
-
-Search.prototype.landsat = function (callback) {
-  this.satelliteName = 'landsat';
-  return this.simple(callback);
-};
-
-Search.prototype.sentinel = function (callback) {
-  this.satelliteName = 'sentinel';
-  return this.simple(callback);
-};
-
-Search.prototype.simple = function (callback) {
+Search.prototype.search = function (callback) {
   var self = this;
   var searchParams;
 
@@ -247,54 +150,10 @@ Search.prototype.simple = function (callback) {
     return callback(e, null);
   }
 
-  logger.debug(JSON.stringify(searchParams));
+  console.log(`searchParams: ${JSON.stringify(searchParams)}`);
 
   this.client.search(searchParams).then(function (body) {
-    var response = [];
-    var count = 0;
-
-    count = body.hits.total;
-    for (var i = 0; i < body.hits.hits.length; i++) {
-      response.push(body.hits.hits[i]._source);
-    }
-
-    response = self.calculateAoiCoverage(response);
-
-    // this is needed for cases where calculateAoiCoverage has returned a smaller value
-    if (response.length < self.size) {
-      count = response.length;
-    }
-
-    var r = {
-      meta: {
-        found: count,
-        name: process.env.NAME || 'sat-api',
-        license: 'CC0-1.0',
-        website: process.env.WEBSITE || 'https://api.developmentseed.org/satellites/',
-        page: self.page,
-        limit: self.size
-      },
-      results: response
-    };
-
-    return callback(null, r);
-  }, function (err) {
-    logger.error(err);
-    return callback(err);
-  });
-};
-
-Search.prototype.geojson = function (callback) {
-  var self = this;
-  var searchParams;
-
-  try {
-    searchParams = this.buildSearch();
-  } catch (e) {
-    return callback(e, null);
-  }
-
-  this.client.search(searchParams).then(function (body) {
+    console.log(`${JSON.stringify(body)}`)
     var count = body.hits.total;
 
     var response = {
@@ -308,16 +167,15 @@ Search.prototype.geojson = function (callback) {
     };
 
     for (var i = 0; i < body.hits.hits.length; i++) {
+      var props = body.hits.hits[i]._source
+      props = _.omit(props, ['bbox', 'geometry', 'assets', 'links'])
       response.features.push({
         type: 'Feature',
-        properties: {
-          scene_id: body.hits.hits[i]._source.scene_id,
-          satellites_name: body.hits.hits[i]._source.satellites_name,
-          cloud_coverage: body.hits.hits[i]._source.cloud_coverage,
-          date: body.hits.hits[i]._source.date,
-          thumbnail: body.hits.hits[i]._source.thumbnail
-        },
-        geometry: body.hits.hits[i]._source.data_geometry
+        properties: props,
+        bbox: body.hits.hits[i]._source.bbox,
+        geometry: body.hits.hits[i]._source.geometry,
+        assets: body.hits.hits[i]._source.assets,
+        links: body.hits.hits[i]._source.links
       });
     }
 
@@ -326,108 +184,7 @@ Search.prototype.geojson = function (callback) {
     logger.error(err);
     return callback(err);
   });
-};
+}
 
-Search.prototype.count = function (callback) {
-  var searchParams;
-
-  try {
-    searchParams = this.buildAggregation();
-  } catch (e) {
-    return callback(e, null);
-  }
-
-  this.client.search(searchParams).then(function (body) {
-    var count = 0;
-
-    count = body.hits.total;
-
-    var r = {
-      meta: {
-        found: count,
-        name: process.env.NAME || 'sat-api',
-        license: 'CC0-1.0',
-        website: process.env.WEBSITE || 'https://api.developmentseed.org/satellites/'
-      },
-      counts: body.aggregations
-    };
-
-    return callback(null, r);
-  }, function (err) {
-    logger.error(err);
-    return callback(err);
-  });
-};
-
-Search.prototype.health = function (callback) {
-  var self = this;
-  var searchParams;
-
-  try {
-    searchParams = this.buildHealthAggregation();
-  } catch (e) {
-    return callback(e, null);
-  }
-
-  this.client.search(searchParams).then(function (body) {
-    var limit = 3000;
-    var count = 0;
-
-    var missingScenes = [];
-    var missingDates = [];
-
-    if (_.get(self.params, 'satellite_name', null) === 'sentinel') {
-      limit = 2000;
-    }
-
-    var start = moment('2015-10-01');
-    var end = moment();
-    var dates = [];
-
-    while (start <= end) {
-      dates.push(start.format('YYYY-MM-DD'));
-      start.add(1, 'day');
-    }
-
-    // iterate through all dates
-    body.aggregations.scenes_by_date.buckets.map(b => {
-      dates.push(b.key_as_string);
-
-      if (b.doc_count < limit) {
-        missingScenes.push({
-          date: b.key_as_string,
-          probably_missing: limit - b.doc_count
-        });
-      }
-    });
-
-    while (start <= end) {
-      if (dates.indexOf(start.format('YYYY-MM-DD')) === -1) {
-        missingDates.push(start.format('YYYY-MM-DD'));
-      }
-      start.add(1, 'day');
-    }
-
-    count = body.hits.total;
-
-    var r = {
-      meta: {
-        total_dates: body.aggregations.scenes_by_date.buckets.length,
-        dates_with_missing_scenes: missingScenes.length,
-        percentage: missingScenes.length / body.aggregations.scenes_by_date.buckets.length * 100,
-        name: process.env.NAME || 'sat-api',
-        license: 'CC0-1.0',
-        website: process.env.WEBSITE || 'https://api.developmentseed.org/satellites/'
-      },
-      missing_scenes: missingScenes,
-      missing_dates: missingDates
-    };
-
-    return callback(null, r);
-  }, function (err) {
-    logger.error(err);
-    return callback(err);
-  });
-};
 
 module.exports = Search;
