@@ -255,7 +255,9 @@ Search.prototype.simple = function (callback) {
 
     count = body.hits.total;
     for (var i = 0; i < body.hits.hits.length; i++) {
-      response.push(body.hits.hits[i]._source);
+      var record = body.hits.hits[i]._source
+      record.cloudCoverFull = record.cloud_coverage
+      response.push(record)
     }
 
     response = self.calculateAoiCoverage(response);
