@@ -57,6 +57,11 @@ var Search = function (event, customClient) {
     params = {};
   }
 
+  if (_.has(params, 'cloudCoverFull')) {
+    this.cloud_coverage = params['aoi_coverage_percentage']
+    params = _.omit(params, ['cloudCoverFull'])
+  }
+
   this.aoiCoverage = null;
 
   if (_.has(params, 'aoi_coverage_percentage')) {
