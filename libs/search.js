@@ -58,7 +58,7 @@ var Search = function (event, customClient) {
   }
 
   if (_.has(params, 'cloudCoverFull')) {
-    this.cloud_coverage = params['aoi_coverage_percentage']
+    this.cloud_coverage = params['cloudCoverFull']
     params = _.omit(params, ['cloudCoverFull'])
   }
 
