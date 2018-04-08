@@ -46,8 +46,8 @@ var intersectsToObj = function (intersects) {
 var Search = function (event, customClient) {
   var params;
 
-  logger.debug('received query:', event.query);
-  logger.debug('received body:', event.body);
+  console.log('received query:', event.query);
+  console.log('received body:', event.body);
 
   if (_.has(event, 'query') && !_.isEmpty(event.query)) {
     params = event.query;
@@ -58,8 +58,9 @@ var Search = function (event, customClient) {
   }
 
   if (_.has(params, 'cloudCoverFull')) {
-    this.cloud_coverage = params['cloudCoverFull']
+    params.cloud_coverage = params['cloudCoverFull']
     params = _.omit(params, ['cloudCoverFull'])
+    console.log(`HASCLOUDCOVERFULL ${params}`)
   }
 
   this.aoiCoverage = null;
@@ -73,7 +74,6 @@ var Search = function (event, customClient) {
   var page = parseInt((params.page) ? params.page : 1);
 
   this.params = params;
-  logger.debug('Generated params:', params);
 
   this.size = parseInt((params.limit) ? params.limit : 1);
   this.frm = (page - 1) * this.size;
