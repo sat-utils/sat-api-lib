@@ -4,30 +4,9 @@ var _ = require('lodash');
 var moment = require('moment');
 var area = require('turf-area');
 var intersect = require('turf-intersect');
-var elasticsearch = require('elasticsearch');
-
 var logger = require('./logger');
 var queries = require('./queries');
 var aggregations = require('./aggregations');
-
-var esConfig = {
-  host: process.env.ES_HOST || 'localhost:9200',
-
-  // Note that this doesn't abort the query.
-  requestTimeout: 50000  // milliseconds
-}
-
-// use AWS Sing4 if aws-access-key is provided
-if (_.has(process.env, 'AWS_ACCESS_KEY_ID') && _.has(process.env, 'AWS_SECRET_ACCESS_KEY')) {
-  esConfig.connectionClass = require('http-aws-es');
-  esConfig.amazonES = {
-    region: process.env.AWS_DEFAULT_REGION || 'us-east-1',
-    accessKey: process.env.AWS_ACCESS_KEY_ID,
-    secretKey: process.env.AWS_SECRET_ACCESS_KEY
-  }
-}
-
-var client = new elasticsearch.Client(esConfig);
 
 // converts string intersect to js object
 var intersectsToObj = function (intersects) {
@@ -42,7 +21,8 @@ var intersectsToObj = function (intersects) {
   return intersects;
 };
 
-var Search = function (event, customClient) {
+// Search class
+function Search(event, customClient) {
   var params;
 
   logger.debug('received query:', event.query);
@@ -72,8 +52,6 @@ var Search = function (event, customClient) {
   this.size = parseInt((params.limit) ? params.limit : 1);
   this.frm = (page - 1) * this.size;
   this.page = parseInt((params.skip) ? params.skip : page);
-
-  this.client = customClient || client;
 };
 
 var aoiCoveragePercentage = function (feature, scene, aoiArea) {

@@ -1,1 +1,3 @@
-module.exports = require('./libs/search.js');
+module.exports = {
+    search: require('./libs/search.js')
+}
