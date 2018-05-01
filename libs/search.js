@@ -22,7 +22,7 @@ var intersectsToObj = function (intersects) {
 };
 
 // Search class
-function Search(event, customClient) {
+function Search(event, esClient) {
   var params;
 
   logger.debug('received query:', event.query);
@@ -52,6 +52,7 @@ function Search(event, customClient) {
   this.size = parseInt((params.limit) ? params.limit : 1);
   this.frm = (page - 1) * this.size;
   this.page = parseInt((params.skip) ? params.skip : page);
+  this.client = esClient
 };
 
 var aoiCoveragePercentage = function (feature, scene, aoiArea) {
