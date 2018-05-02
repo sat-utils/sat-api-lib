@@ -100,7 +100,7 @@ Search.prototype.calculateAoiCoverage = function (response) {
   }
 };
 
-Search.prototype.buildSearch = function () {
+Search.prototype.buildSearch = function (index='items') {
   var fields;
 
   // if fields are included remove it from params
@@ -110,7 +110,7 @@ Search.prototype.buildSearch = function () {
   }
 
   return {
-    index: 'items',
+    index: index,
     body: queries(this.params),
     size: this.size,
     from: this.frm,
