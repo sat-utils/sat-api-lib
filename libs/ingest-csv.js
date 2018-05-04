@@ -53,7 +53,7 @@ function split({url, bucket, key, arn='', maxFiles=0, linesPerFile=500, maxLambd
 
     if (lineCounter > linesPerFile) {
       fileCounter += 1
-      const fileName = `${key}_${fileCounter}.csv`;
+      const fileName = `${key}${fileCounter}.csv`;
       const params = {
         Body: currentFile,
         Bucket: bucket,
@@ -90,12 +90,12 @@ function split({url, bucket, key, arn='', maxFiles=0, linesPerFile=500, maxLambd
         const params = {
           Body: currentFile,
           Bucket: bucket,
-          Key: `${key}_${fileCounter}.csv`
+          Key: `${key}${fileCounter}.csv`
         }
         s3.upload(params, (e, d) => { if (e) console.log(e) })
         currentFile.end()
     }
-    console.log(`${fileCounter} total files`)
+    console.log(`${fileCounter-1} total files`)
     // determine batches and run lambdas
     if (arn != '') {
       maxFiles = (maxFiles === 0) ? fileCounter : Math.min(maxFiles, fileCounter)
@@ -127,7 +127,7 @@ function processFiles(bucket, key, transform, cb, currentFileNum=0, lastFileNum=
   //invokeLambda(bucket, key, currentFileNum, lastFileNum, arn)
 
   processFile(
-    bucket, `${key}_${currentFileNum}.csv`, transform
+    bucket, `${key}${currentFileNum}.csv`, transform
   ).then((n_scenes) => {
     invokeLambda(bucket, key, nextFileNum, lastFileNum, arn, 0)
     cb()
@@ -148,6 +148,7 @@ function processFiles(bucket, key, transform, cb, currentFileNum=0, lastFileNum=
 // Process single CSV file
 function processFile(bucket, key, transform) {
   // get the csv file s3://${bucket}/${key}
+  console.log('Processing s3://%s/%s' % (bucket, key))
   const s3 = new AWS.S3()
   const csvStream = csv.parse({ headers: true, objectMode: true })
   s3.getObject({Bucket: bucket, Key: key}).createReadStream().pipe(csvStream)
@@ -163,7 +164,7 @@ function invokeLambda(bucket, key, nextFileNum, lastFileNum, arn, retries) {
       const params = {
         stateMachineArn: arn,
         input: JSON.stringify({ bucket, key, currentFileNum: nextFileNum, lastFileNum, arn, retries}),
-        name: `csv_${nextFileNum}_${Date.now()}`
+        name: `ingest_${nextFileNum}_${Date.now()}`
       }
       stepfunctions.startExecution(params, function(err, data) {
         if (err) {
