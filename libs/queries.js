@@ -80,32 +80,6 @@ var geoShaperQuery = function (field, geometry) {
   return query;
 }
 
-var contains = function (params) {
-  var correctQuery = new RegExp('^[0-9\.\,\-]+$');
-  if (correctQuery.test(params)) {
-    var coordinates = params.split(',')
-    coordinates = coordinates.map(parseFloat)
-
-    if (coordinates[0] < -180 || coordinates[0] > 180) {
-      throw new Error('Invalid coordinates');
-    }
-
-    if (coordinates[1] < -90 || coordinates[1] > 90) {
-      throw new Error('Invalid coordinates');
-    }
-
-    return geoShaperQuery(
-      'geometry',
-      {
-        type: 'circle',
-        coordinates: coordinates,
-        radius: '1km'
-      }
-    );
-  } else {
-    throw new Error('Invalid coordinates');
-  }
-};
 
 var intersects = function (geojson, queries) {
   // if we receive an object, assume it's GeoJSON, if not, try and parse
@@ -156,12 +130,6 @@ module.exports = function (params) {
   // no filters, return everything
   if (Object.keys(params).length === 0) {
     return response;
-  }
-
-  // contain search
-  if (params.contains) {
-    queries.push(contains(params.contains));
-    params = _.omit(params, ['contains']);
   }
 
   // intersects search
