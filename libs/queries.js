@@ -1,9 +1,9 @@
-var _ = require('lodash');
+var _ = require('lodash')
 
-var kinks = require('turf-kinks');
-var gjv = require('geojson-validation');
+var kinks = require('turf-kinks')
+var gjv = require('geojson-validation')
 
-var geojsonError = new Error('Invalid Geojson');
+var geojsonError = new Error('Invalid Geojson')
 
 /**
  * checks if the polygon is valid, e.g. does not have self intersecting
@@ -15,51 +15,59 @@ var validatePolygon = function (feature) {
   var ipoints = kinks(feature);
 
   if (ipoints.features.length > 0) {
-    throw new Error('Invalid Polgyon: self-intersecting');
+    throw new Error('Invalid Polgyon: self-intersecting')
   }
-};
-
-var legacyParams = function (params) {
-  return {
-    query_string: {
-      query: params.search
-    }
-  };
-};
+}
 
 var termQuery = function (field, value) {
   var query = {
     match: {}
-  };
+  }
 
   query.match[field] = {
     query: value,
     lenient: false,
     zero_terms_query: 'none'
-  };
+  }
 
-  return query;
+  query = {
+    bool: {
+      should: [
+        query,
+        {bool: {must_not: {exists: {'field': field}}}}
+      ]}
+  }
+
+  return query
 };
 
 var rangeQuery = function (field, frm, to) {
   var query = {
     range: {}
-  };
+  }
 
   query.range[field] = {
     gte: frm,
     lte: to
-  };
+  }
+
+  query = {
+    bool: {
+      should: [
+        query,
+        {bool: {must_not: {exists: {'field': field}}}}
+      ]}
+  }
 
   return query;
-};
+}
 
 var geoShaperQuery = function (field, geometry) {
   var _geometry = Object.assign({}, geometry);
 
   var query = {
     geo_shape: {}
-  };
+  }
 
   if (_geometry.type === 'Polygon') {
     _geometry.type = _geometry.type.toLowerCase();
@@ -67,16 +75,16 @@ var geoShaperQuery = function (field, geometry) {
 
   query.geo_shape[field] = {
     shape: _geometry
-  };
+  }
 
   return query;
-};
+}
 
 var contains = function (params) {
   var correctQuery = new RegExp('^[0-9\.\,\-]+$');
   if (correctQuery.test(params)) {
-    var coordinates = params.split(',');
-    coordinates = coordinates.map(parseFloat);
+    var coordinates = params.split(',')
+    coordinates = coordinates.map(parseFloat)
 
     if (coordinates[0] < -180 || coordinates[0] > 180) {
       throw new Error('Invalid coordinates');
@@ -87,7 +95,7 @@ var contains = function (params) {
     }
 
     return geoShaperQuery(
-      'data_geometry',
+      'geometry',
       {
         type: 'circle',
         coordinates: coordinates,
@@ -114,7 +122,7 @@ var intersects = function (geojson, queries) {
       for (var i = 0; i < geojson.features.length; i++) {
         var feature = geojson.features[i];
         validatePolygon(feature);
-        queries.push(geoShaperQuery('data_geometry', feature.geometry));
+        queries.push(geoShaperQuery('geometry', feature.geometry));
       }
     } else {
       if (geojson.type !== 'Feature') {
@@ -126,7 +134,7 @@ var intersects = function (geojson, queries) {
       }
       validatePolygon(geojson);
 
-      queries.push(geoShaperQuery('data_geometry', geojson.geometry));
+      queries.push(geoShaperQuery('geometry', geojson.geometry));
     }
     return queries;
   } else {
@@ -145,26 +153,8 @@ module.exports = function (params) {
 
   params = _.omit(params, ['limit', 'page', 'skip']);
 
+  // no filters, return everything
   if (Object.keys(params).length === 0) {
-    return response;
-  }
-
-  var rangeFields = {};
-
-  var termFields = [
-    {
-      parameter: 'id',
-      field: 'id'
-    },
-    /*{
-      parameter: 'instrument',
-      field: 'instrument'
-    }*/
-  ];
-
-  // Do legacy search
-  if (params.search) {
-    response.query = legacyParams(params);
     return response;
   }
 
@@ -180,64 +170,17 @@ module.exports = function (params) {
     params = _.omit(params, ['intersects']);
   }
 
-  // select parameters that have _from or _to
+  var interval, query
   _.forEach(params, function (value, key) {
-    var field = key.replace('_from', '');
-    field = field.replace('_to', '');
-
-    if (key === 'cloud_from' || key === 'cloud_to') {
-      rangeFields['cloud'] = {
-        from: 'cloud_from',
-        to: 'cloud_to',
-        field: 'cloud_coverage'
-      };
-    } else if (_.endsWith(key, '_from')) {
-      if (_.isUndefined(rangeFields[field])) {
-        rangeFields[field] = {};
-      }
-
-      rangeFields[field]['from'] = key;
-      rangeFields[field]['field'] = field;
-    } else if (_.endsWith(key, '_to')) {
-      if (_.isUndefined(rangeFields[field])) {
-        rangeFields[field] = {};
-      }
-
-      rangeFields[field]['to'] = key;
-      rangeFields[field]['field'] = field;
+    interval = value.split('/')
+    if (interval.length > 1) {
+      query = rangeQuery(key, interval[0], interval[1])
     } else {
-      return;
+      query = termQuery(key, value)
     }
-  });
+    queries.push(query)
+  })
 
-  // Range search
-  _.forEach(rangeFields, function (value, key) {
-    queries.push(
-      rangeQuery(
-        value.field,
-        _.get(params, _.get(value, 'from')),
-        _.get(params, _.get(value, 'to'))
-      )
-    );
-    params = _.omit(params, [_.get(value, 'from'), _.get(value, 'to')]);
-  });
-
-  // Term search
-  for (var i = 0; i < termFields.length; i++) {
-    if (_.has(params, termFields[i].parameter)) {
-      queries.push(
-        termQuery(
-          termFields[i].field,
-          params[termFields[i].parameter]
-        )
-      );
-    }
-  }
-
-  // For all items that were not matched pass the key to the term query
-  _.forEach(params, function (value, key) {
-    queries.push(termQuery(key, value));
-  });
 
   response.query = {
     bool: {
