@@ -6,7 +6,6 @@ var area = require('turf-area')
 var intersect = require('turf-intersect')
 var logger = require('./logger')
 var queries = require('./queries')
-var aggregations = require('./aggregations')
 
 const API_URL = process.env.API_URL || 'https://sat-api.developmentseed.org'
 
@@ -21,38 +20,42 @@ var intersectsToObj = function (intersects) {
   }
 
   return intersects;
-};
+}
+
 
 // Search class
 function Search(event, esClient) {
-  var params;
+  var params = {}
 
   if (_.has(event, 'query') && !_.isEmpty(event.query)) {
-    params = event.query;
+    params = event.query
   } else if (_.has(event, 'body') && !_.isEmpty(event.body)) {
-    params = event.body;
-  } else {
-    params = {};
+    params = event.body
   }
 
   // AOI Coverage
   this.aoiCoverage = null;
   if (_.has(params, 'coverage')) {
-    this.aoiCoverage = params['coverage'];
-    params = _.omit(params, ['coverage']);
+    this.aoiCoverage = params['coverage']
+    params = _.omit(params, ['coverage'])
   }
 
   // get page number
-  var page = parseInt((params.page) ? params.page : 1);
+  var page = parseInt((params.page) ? params.page : 1)
 
-  this.params = params;
-  console.log('Search parameters:', params);
+  this.params = params
+  console.log('Search parameters:', params)
 
-  this.size = parseInt((params.limit) ? params.limit : 1);
-  this.frm = (page - 1) * this.size;
-  this.page = parseInt((params.skip) ? params.skip : page);
+  this.size = parseInt((params.limit) ? params.limit : 1)
+  this.frm = (page - 1) * this.size
+  this.page = parseInt((params.skip) ? params.skip : page)
   this.client = esClient
-};
+
+  this.queries = queries(this.params)
+
+  console.log(`Queries: ${JSON.stringify(this.queries)}`)
+}
+
 
 var aoiCoveragePercentage = function (feature, scene, aoiArea) {
   var intersectObj = intersect(feature, scene);
@@ -64,7 +67,8 @@ var aoiCoveragePercentage = function (feature, scene, aoiArea) {
   var percentage = (intersectArea / aoiArea) * 100;
 
   return percentage;
-};
+}
+
 
 Search.prototype.calculateAoiCoverage = function (response) {
   var self = this;
@@ -97,47 +101,39 @@ Search.prototype.calculateAoiCoverage = function (response) {
   } else {
     return response;
   }
-};
-
-Search.prototype.buildSearch = function (index='items') {
-  var fields;
-
-  // if fields are included remove it from params
-  if (_.has(this.params, 'fields')) {
-    fields = this.params.fields;
-    this.params = _.omit(this.params, ['fields'])
-  }
-
-  return {
-    index: index,
-    body: queries(this.params),
-    size: this.size,
-    from: this.frm,
-    _source: fields
-  }
 }
+
 
 // search for items using collection and items
 Search.prototype.search_items = function(callback) {
   // check collection first
   this.search('collections', (err, resp) => {
-    console.log(resp)
+    var collections = resp.features.map((c) => {
+      return c.properties.collection_name
+    })
+    console.log('matched collections', collections)
+    var qs = collections.map((c) => {
+      return {"match": {"collection": {"query": c}}}
+    })
+    //console.log('qs', JSON.stringify(qs))
+    // TODO - is this ever going to be called twice, will append every time (don't think so)
+    //this.queries.query.bool.must.push({should: qs})
+    //console.log('queries', JSON.stringify(this.queries))
     return this.search('items', callback)
   })
 }
 
 
 Search.prototype.search = function (index, callback) {
-  var self = this;
-  var searchParams;
+  var self = this
 
-  try {
-    searchParams = this.buildSearch(index=index)
-  } catch (e) {
-    return callback(e, null)
+  var searchParams = {
+    index: index,
+    body: this.queries,
+    size: this.size,
+    from: this.frm,
+    _source: this.fields  
   }
-
-  console.log(`Queries: ${JSON.stringify(searchParams)}`)
 
   this.client.search(searchParams).then(function (body) {
     console.log(`body: ${JSON.stringify(body)}`)
