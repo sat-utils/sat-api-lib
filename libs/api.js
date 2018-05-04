@@ -109,7 +109,7 @@ Search.prototype.search_items = function(callback) {
   // check collection first
   this.search('collections', (err, resp) => {
     var collections = resp.features.map((c) => {
-      return c.properties.collection_name
+      return c.properties.collection
     })
     console.log('matched collections', collections)
     console.log('queries before', JSON.stringify(this.queries))

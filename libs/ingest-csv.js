@@ -148,7 +148,7 @@ function processFiles(bucket, key, transform, cb, currentFileNum=0, lastFileNum=
 // Process single CSV file
 function processFile(bucket, key, transform) {
   // get the csv file s3://${bucket}/${key}
-  console.log('Processing s3://%s/%s' % (bucket, key))
+  console.log(`Processing s3://${bucket}/${key}`)
   const s3 = new AWS.S3()
   const csvStream = csv.parse({ headers: true, objectMode: true })
   s3.getObject({Bucket: bucket, Key: key}).createReadStream().pipe(csvStream)
