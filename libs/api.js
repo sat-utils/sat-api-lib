@@ -34,11 +34,11 @@ function Search(event, esClient) {
   }
 
   // AOI Coverage
-  this.aoiCoverage = null;
+  /*this.aoiCoverage = null;
   if (_.has(params, 'coverage')) {
     this.aoiCoverage = params['coverage']
     params = _.omit(params, ['coverage'])
-  }
+  }*/
 
   // get page number
   var page = parseInt((params.page) ? params.page : 1)
@@ -57,7 +57,7 @@ function Search(event, esClient) {
 }
 
 
-var aoiCoveragePercentage = function (feature, scene, aoiArea) {
+/*var aoiCoveragePercentage = function (feature, scene, aoiArea) {
   var intersectObj = intersect(feature, scene);
   if (intersectObj === undefined) {
     return 0;
@@ -101,7 +101,7 @@ Search.prototype.calculateAoiCoverage = function (response) {
   } else {
     return response;
   }
-}
+}*/
 
 
 // search for items using collection and items
@@ -112,13 +112,17 @@ Search.prototype.search_items = function(callback) {
       return c.properties.collection_name
     })
     console.log('matched collections', collections)
-    var qs = collections.map((c) => {
-      return {"match": {"collection": {"query": c}}}
-    })
-    //console.log('qs', JSON.stringify(qs))
-    // TODO - is this ever going to be called twice, will append every time (don't think so)
-    //this.queries.query.bool.must.push({should: qs})
-    //console.log('queries', JSON.stringify(this.queries))
+    console.log('queries before', JSON.stringify(this.queries))
+    var qs
+    if (collections.length === 0) {
+      this.queries.query.bool.must.push({bool: {must_not: {exists: {'field': 'collection'}}}})
+    } else {
+      qs = collections.map((c) => {
+        return {"match": {"collection": {"query": c}}}
+      })
+      this.queries.query.bool.must.push({bool: {should: qs}})
+    }   
+    console.log('queries after', JSON.stringify(this.queries))
     return this.search('items', callback)
   })
 }
