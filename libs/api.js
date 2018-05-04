@@ -1,12 +1,14 @@
 'use strict';
 
-var _ = require('lodash');
-var moment = require('moment');
-var area = require('turf-area');
-var intersect = require('turf-intersect');
-var logger = require('./logger');
-var queries = require('./queries');
-var aggregations = require('./aggregations');
+var _ = require('lodash')
+var moment = require('moment')
+var area = require('turf-area')
+var intersect = require('turf-intersect')
+var logger = require('./logger')
+var queries = require('./queries')
+var aggregations = require('./aggregations')
+
+const API_URL = process.env.API_URL || 'https://sat-api.developmentseed.org'
 
 // converts string intersect to js object
 var intersectsToObj = function (intersects) {
@@ -25,9 +27,6 @@ var intersectsToObj = function (intersects) {
 function Search(event, esClient) {
   var params;
 
-  logger.debug('received query:', event.query);
-  logger.debug('received body:', event.body);
-
   if (_.has(event, 'query') && !_.isEmpty(event.query)) {
     params = event.query;
   } else if (_.has(event, 'body') && !_.isEmpty(event.body)) {
@@ -36,18 +35,18 @@ function Search(event, esClient) {
     params = {};
   }
 
+  // AOI Coverage
   this.aoiCoverage = null;
-
-  if (_.has(params, 'aoi_coverage_percentage')) {
-    this.aoiCoverage = params['aoi_coverage_percentage'];
-    params = _.omit(params, ['aoi_coverage_percentage']);
+  if (_.has(params, 'coverage')) {
+    this.aoiCoverage = params['coverage'];
+    params = _.omit(params, ['coverage']);
   }
 
   // get page number
   var page = parseInt((params.page) ? params.page : 1);
 
   this.params = params;
-  console.log('Generated params:', params);
+  console.log('Search parameters:', params);
 
   this.size = parseInt((params.limit) ? params.limit : 1);
   this.frm = (page - 1) * this.size;
@@ -106,7 +105,7 @@ Search.prototype.buildSearch = function (index='items') {
   // if fields are included remove it from params
   if (_.has(this.params, 'fields')) {
     fields = this.params.fields;
-    this.params = _.omit(this.params, ['fields']);
+    this.params = _.omit(this.params, ['fields'])
   }
 
   return {
@@ -115,24 +114,33 @@ Search.prototype.buildSearch = function (index='items') {
     size: this.size,
     from: this.frm,
     _source: fields
-  };
-};
+  }
+}
+
+// search for items using collection and items
+Search.prototype.search_items = function(callback) {
+  // check collection first
+  this.search('collections', (err, resp) => {
+    console.log(resp)
+    return this.search('items', callback)
+  })
+}
 
 
-Search.prototype.search = function (callback) {
+Search.prototype.search = function (index, callback) {
   var self = this;
   var searchParams;
 
   try {
-    searchParams = this.buildSearch();
+    searchParams = this.buildSearch(index=index)
   } catch (e) {
-    return callback(e, null);
+    return callback(e, null)
   }
 
-  console.log(`searchParams: ${JSON.stringify(searchParams)}`);
+  console.log(`Queries: ${JSON.stringify(searchParams)}`)
 
   this.client.search(searchParams).then(function (body) {
-    console.log(`${JSON.stringify(body)}`)
+    console.log(`body: ${JSON.stringify(body)}`)
     var count = body.hits.total;
 
     var response = {
@@ -143,27 +151,39 @@ Search.prototype.search = function (callback) {
         page: self.page
       },
       features: []
-    };
+    }
 
     for (var i = 0; i < body.hits.hits.length; i++) {
       var props = body.hits.hits[i]._source
-      props = _.omit(props, ['bbox', 'geometry', 'assets', 'links'])
+      props = _.omit(props, ['bbox', 'geometry', 'assets', 'links', 'eo:bands'])
+      var links = body.hits.hits[i]._source.links || []
+      // update relative links to absolute
+      links.forEach((el) => {
+        if (el['rel'] === 'collection')
+          el['href'] = `${API_URL}${el['href']}`
+      })
+      // add self link
+      let prefix = '/search/stac'
+      if (index === 'collections')
+        prefix = '/collections'
+      links.push({'ref': 'self', 'href': `${API_URL}${prefix}?id=${props['id']}`})
       response.features.push({
         type: 'Feature',
         properties: props,
         bbox: body.hits.hits[i]._source.bbox,
         geometry: body.hits.hits[i]._source.geometry,
         assets: body.hits.hits[i]._source.assets,
-        links: body.hits.hits[i]._source.links
-      });
+        links,
+        'eo:bands': body.hits.hits[i]._source['eo:bands']
+      })
     }
 
     return callback(null, response);
   }, function (err) {
-    logger.error(err);
-    return callback(err);
+    logger.error(err)
+    return callback(err)
   });
 }
 
 
-module.exports = Search;
+module.exports = Search

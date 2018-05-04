@@ -1,3 +1,3 @@
 module.exports = {
-    search: require('./libs/search.js')
+    api: require('./libs/api.js')
 }
