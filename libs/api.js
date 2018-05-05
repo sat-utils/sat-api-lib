@@ -171,7 +171,7 @@ Search.prototype.search = function (index, callback) {
       } else {
         links.push({'ref': 'self', 'href': `${API_URL}${prefix}?id=${props['id']}`})
         if (props.hasOwnProperty('collection'))
-          links.push({'ref': 'collection', 'href': `${API_URL}${prefix}?collection=${props['collection']}`})
+          links.push({'ref': 'collection', 'href': `${API_URL}/collections?collection=${props['collection']}`})
       }
       response.features.push({
         type: 'Feature',
