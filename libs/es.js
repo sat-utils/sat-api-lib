@@ -173,11 +173,11 @@ function streamToEs(stream, transform, esClient, index) {
 }
 
 
-async function saveRecords(esClient, records, index, callback) {
+async function saveRecords(esClient, records, index, idfield, callback) {
   const body = []
 
   records.forEach((r) => {
-    body.push({ update: { _index: index, _type: 'sat', _id: r.id, _retry_on_conflict: 3 } });
+    body.push({ update: { _index: index, _type: 'sat', _id: r[idfield], _retry_on_conflict: 3 } });
     body.push({ doc: r, doc_as_upsert: true })
   })
 
