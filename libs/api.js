@@ -115,13 +115,14 @@ Search.prototype.search_items = function(callback) {
     console.log('queries before', JSON.stringify(this.queries))
     var qs
     if (collections.length === 0) {
-      this.queries.query.bool.must.push({bool: {must_not: {exists: {'field': 'collection'}}}})
+      qs = {bool: {must_not: {exists: {'field': 'collection'}}}}  
     } else {
-      qs = collections.map((c) => {
-        return {"match": {"collection": {"query": c}}}
-      })
-      this.queries.query.bool.must.push({bool: {should: qs}})
-    }   
+      qs = collections.map((c) => { return {"match": {"collection": {"query": c}}} })
+      qs = {bool: {should: qs}}
+    }
+    if (!this.queries.query.hasOwnProperty('match_all')) {
+      this.queries.query.bool.must.push(qs)
+    }
     console.log('queries after', JSON.stringify(this.queries))
     return this.search('items', callback)
   })
