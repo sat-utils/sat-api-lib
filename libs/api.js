@@ -163,13 +163,15 @@ Search.prototype.search = function (index, callback) {
         if (el['rel'] === 'collection')
           el['href'] = `${API_URL}${el['href']}`
       })
-      // add self link
+      // add self and collection links
       let prefix = '/search/stac'
       if (index === 'collections') {
         prefix = '/collections'
         links.push({'ref': 'self', 'href': `${API_URL}${prefix}?collection=${props['collection']}`})
       } else {
         links.push({'ref': 'self', 'href': `${API_URL}${prefix}?id=${props['id']}`})
+        if (props.hasOwnProperty('collection'))
+          links.push({'ref': 'collection', 'href': `${API_URL}${prefix}?collection=${props['collection']}`})
       }
       response.features.push({
         type: 'Feature',
