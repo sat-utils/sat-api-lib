@@ -17,8 +17,8 @@ elasticsearch host
 
 async function Client() {
   if (!esClient) {
-    console.log('connecting to elasticsearch');
     esClient = await connect()
+    console.log('connected to elasticsearch');
   } else {
     console.log('using existing elasticsearch connection')
   }
@@ -59,7 +59,6 @@ async function connect() {
       console.log('unable to connect to elasticsearch')
       reject('unable to connect to elasticsearch')
     } else {
-      console.log('connected to elasticsearch')
       resolve()
     }
   }))
@@ -81,30 +80,31 @@ async function putMapping(esClient, index) {
       index,
       body: {
         mappings: {
-          '_default_': {
+          'doc': {
             /*'_all': {
               enabled: true
             },*/
             properties: {
-              id: { type: 'string' },
               datetime: { type: 'date' },
-              start: { type: 'date' },
-              end: { type: 'date' },
+              "eo:cloud_cover": { type: 'integer' },
+              "eo:gsd": { type: 'float' },
+              "eo:off_nadir": { type: 'float' },
+              "eo:azimuth": { type: 'float' },
+              "eo:sun_azimuth": { type: 'float' },
+              "eo:sun_elevation": { type: 'float' },
               geometry: {
                 type: 'geo_shape',
                 tree: 'quadtree',
                 precision: '5mi'
-              },
-              "eo:cloud_cover": { type: 'float' },
-              "eo:platform": { type: 'string' },
-              "eo:instrument": { type: 'string' }
+              }
             }
           }
         }
       }
+    }).catch((err) => {
+      console.log("Error creating index, already created: ", err)
     })
   }
-  throw new Error('The index is already created. Can\'t put mapping')
 }
 
 
@@ -137,7 +137,7 @@ function streamToEs(stream, transform, esClient, index) {
   var toEs = through2({'objectMode': true, 'consume': true}, function(data, encoding, next) {
     var record = {
       index,
-      type: 'sat', 
+      type: 'doc', 
       id: data['id'],
       action: 'update',
       _retry_on_conflict: 3,
@@ -177,7 +177,7 @@ async function saveRecords(esClient, records, index, idfield, callback) {
   const body = []
 
   records.forEach((r) => {
-    body.push({ update: { _index: index, _type: 'sat', _id: r[idfield], _retry_on_conflict: 3 } });
+    body.push({ update: { _index: index, _type: 'doc', _id: r[idfield], _retry_on_conflict: 3 } });
     body.push({ doc: r, doc_as_upsert: true })
   })
 
