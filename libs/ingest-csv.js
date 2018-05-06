@@ -177,12 +177,11 @@ function invokeLambda(bucket, key, nextFileNum, lastFileNum, arn, retries) {
 }
 
 
-async function update({bucket, key, transform, cb=null, currentFileNum=0, lastFileNum=0, arn=null, retries=0}) {
-  es.client().then((client) => {
-    esClient = client
-    es.putMapping(client, index).catch((err) => {})
-    processFiles(bucket, key, transform, cb, currentFileNum, lastFileNum, arn, retries)
-  }).catch((err) => {console.log(err)})
+async function update({client, bucket, key, transform, cb=null, currentFileNum=0, lastFileNum=0, arn=null, retries=0}) {
+  esClient = client
+  esClient = client
+  es.putMapping(client, index).catch((err) => {})
+  processFiles(bucket, key, transform, cb, currentFileNum, lastFileNum, arn, retries)
 }
 
 
