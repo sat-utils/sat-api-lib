@@ -107,7 +107,7 @@ Search.prototype.calculateAoiCoverage = function (response) {
 // search for items using collection and items
 Search.prototype.search_items = function(callback) {
   // check collection first
-  this.search_collecitons((err, resp) => {
+  this.search_collections((err, resp) => {
     var collections = resp.features.map((c) => {
       return c.properties.collection
     })
@@ -130,15 +130,23 @@ Search.prototype.search_items = function(callback) {
 
 
 Search.prototype.search_collections = function (callback) {
+  // hacky way to get all collections
+  var sz = this.size
+  // to ensure all collections get returned
+  this.size = 100
   // really hacky way to remove geometry from search of collections...temporary
   var geom
   if (this.params.hasOwnProperty('intersects')) {
     geom = this.params.intersects
+    this.params = _.omit(this.params, 'intersects')
     // redo es queries excluding intersects
     this.queries = queries(this.params)
+    console.log('queries after excluding intersects', JSON.stringify(this.queries))
   }
   this.search('collections', (err, resp) => {
-    if (!geom) {
+    // set sz back to provided parameter
+    this.size = sz
+    if (geom) {
       this.params.intersects = geom
       // redo es queries including intersects
       this.queries = queries(this.params)
@@ -158,6 +166,8 @@ Search.prototype.search = function (index, callback) {
     from: this.frm,
     _source: this.fields  
   }
+
+  console.log('Search parameters: ', JSON.stringify(searchParams))
 
   this.client.search(searchParams).then(function (body) {
     console.log(`body: ${JSON.stringify(body)}`)
