@@ -62,7 +62,7 @@ var rangeQuery = function (field, frm, to) {
   return query;
 }
 
-var geoShaperQuery = function (field, geometry) {
+var geometryQuery = function (field, geometry) {
   var _geometry = Object.assign({}, geometry);
 
   var query = {
@@ -96,7 +96,7 @@ var intersects = function (geojson, queries) {
       for (var i = 0; i < geojson.features.length; i++) {
         var feature = geojson.features[i];
         validatePolygon(feature);
-        queries.push(geoShaperQuery('geometry', feature.geometry));
+        queries.push(geometryQuery('geometry', feature.geometry));
       }
     } else {
       if (geojson.type !== 'Feature') {
@@ -108,7 +108,7 @@ var intersects = function (geojson, queries) {
       }
       validatePolygon(geojson);
 
-      queries.push(geoShaperQuery('geometry', geojson.geometry));
+      queries.push(geometryQuery('geometry', geojson.geometry));
     }
     return queries;
   } else {
