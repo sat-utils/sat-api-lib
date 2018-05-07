@@ -121,7 +121,7 @@ function split({url, bucket, key, arn='', maxFiles=0, linesPerFile=500, maxLambd
 
 // Process 1 or more CSV files by processing one at a time, then invoking the next
 function processFiles(bucket, key, transform, cb, currentFileNum=0, lastFileNum=0, arn=null, retries=0) {
-  const maxRetries = 10
+  const maxRetries = 5
 
   var nextFileNum = (currentFileNum < lastFileNum) ? currentFileNum + 1 : null
   //invokeLambda(bucket, key, currentFileNum, lastFileNum, arn)
@@ -178,7 +178,6 @@ function invokeLambda(bucket, key, nextFileNum, lastFileNum, arn, retries) {
 
 
 async function update({client, bucket, key, transform, cb=null, currentFileNum=0, lastFileNum=0, arn=null, retries=0}) {
-  esClient = client
   esClient = client
   es.putMapping(client, index).catch((err) => {})
   processFiles(bucket, key, transform, cb, currentFileNum, lastFileNum, arn, retries)
