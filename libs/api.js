@@ -137,8 +137,10 @@ Search.prototype.search_items = function(callback) {
 Search.prototype.search_collections = function (callback) {
   // hacky way to get all collections
   var sz = this.size
+  var frm = this.frm
   // to ensure all collections get returned
   this.size = 100
+  this.frm = 0
   // really hacky way to remove geometry from search of collections...temporary
   var geom
   if (this.params.hasOwnProperty('intersects')) {
@@ -151,6 +153,7 @@ Search.prototype.search_collections = function (callback) {
   this.search('collections', (err, resp) => {
     // set sz back to provided parameter
     this.size = sz
+    this.frm = frm
     if (geom) {
       this.params.intersects = geom
       // redo es queries including intersects
