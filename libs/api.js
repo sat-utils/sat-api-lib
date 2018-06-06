@@ -40,15 +40,20 @@ function Search(event, esClient) {
     params = _.omit(params, ['coverage'])
   }*/
 
+  this.merge = false
+  if (_.has(params, 'merge')) {
+    this.merge = params['merge']
+    params = _.omit(params, ['merge'])
+  }  
+
   // get page number
-  var page = parseInt((params.page) ? params.page : 1)
+  this.page = parseInt((params.page) ? params.page : 1)
 
   this.params = params
   console.log('Search parameters:', params)
 
   this.size = parseInt((params.limit) ? params.limit : 1)
-  this.frm = (page - 1) * this.size
-  this.page = parseInt((params.skip) ? params.skip : page)
+  this.frm = (this.page - 1) * this.size
   this.client = esClient
 
   this.queries = queries(this.params)
@@ -183,24 +188,24 @@ Search.prototype.search = function (index, callback) {
       features: []
     }
 
+    // get all collections
+    //var collections = body.hits.hits.map((c) => {
+    //  return c[i]._source.collection
+    //})
+
     for (var i = 0; i < body.hits.hits.length; i++) {
       var props = body.hits.hits[i]._source
       props = _.omit(props, ['bbox', 'geometry', 'assets', 'links', 'eo:bands'])
       var links = body.hits.hits[i]._source.links || []
-      // update relative links to absolute
-      links.forEach((el) => {
-        if (el['rel'] === 'collection')
-          el['href'] = `${API_URL}${el['href']}`
-      })
       // add self and collection links
       let prefix = '/search/stac'
       if (index === 'collections') {
         prefix = '/collections'
-        links.push({'ref': 'self', 'href': `${API_URL}${prefix}?collection=${props['collection']}`})
+        links['self'] = {'ref': 'self', 'href': `${API_URL}${prefix}?collection=${props['collection']}`}
       } else {
         links.push({'ref': 'self', 'href': `${API_URL}${prefix}?id=${props['id']}`})
         if (props.hasOwnProperty('collection'))
-          links.push({'ref': 'collection', 'href': `${API_URL}/collections?collection=${props['collection']}`})
+          links['collection']['href'] = {'href': `${API_URL}/collections?collection=${props['collection']}`}
       }
       response.features.push({
         type: 'Feature',
