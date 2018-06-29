@@ -114,15 +114,15 @@ Search.prototype.search_items = function(callback) {
   // check collection first
   this.search_collections((err, resp) => {
     var collections = resp.features.map((c) => {
-      return c.properties['cx:id']
+      return c.properties['c:id']
     })
     console.log('matched collections', collections)
     console.log('queries before', JSON.stringify(this.queries))
     var qs
     if (collections.length === 0) {
-      qs = {bool: {must_not: {exists: {'field': 'cx:id'}}}}  
+      qs = {bool: {must_not: {exists: {'field': 'c:id'}}}}  
     } else {
-      qs = collections.map((c) => { return {"match": {"cx:id": {"query": c}}} })
+      qs = collections.map((c) => { return {"match": {"c:id": {"query": c}}} })
       qs = {bool: {should: qs}}
     }
     if (!this.queries.query.hasOwnProperty('match_all')) {
@@ -204,11 +204,11 @@ Search.prototype.search = function (index, callback) {
       let prefix = '/search/stac'
       if (index === 'collections') {
         prefix = '/collections'
-        links['self'] = {'ref': 'self', 'href': `${API_URL}${prefix}?cx:id=${props['collection']}`}
+        links['self'] = {'rel': 'self', 'href': `${API_URL}${prefix}?c:id=${props['collection']}`}
       } else {
-        links['self'] = {'ref': 'self', 'href': `${API_URL}${prefix}?id=${props['id']}`}
-        if (props.hasOwnProperty('cx:id'))
-          links['cx:collection'] = {'href': `${API_URL}/collections?cx:id=${props['cx:id']}`}
+        links['self'] = {'rel': 'self', 'href': `${API_URL}${prefix}?id=${props['id']}`}
+        if (props.hasOwnProperty('c:id'))
+          links['collection'] = {'href': `${API_URL}/collections?c:id=${props['c:id']}`}
       }
       response.features.push({
         type: 'Feature',
