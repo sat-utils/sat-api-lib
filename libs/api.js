@@ -7,8 +7,6 @@ var intersect = require('turf-intersect')
 var logger = require('./logger')
 var queries = require('./queries')
 
-const API_URL = process.env.API_URL || 'https://sat-api.developmentseed.org'
-
 // converts string intersect to js object
 var intersectsToObj = function (intersects) {
   if (_.isString(intersects)) {
@@ -32,6 +30,8 @@ function Search(event, esClient) {
   } else if (_.has(event, 'body') && !_.isEmpty(event.body)) {
     params = event.body
   }
+
+  this.headers = event.headers
 
   // AOI Coverage
   /*this.aoiCoverage = null;
@@ -201,14 +201,16 @@ Search.prototype.search = function (index, callback) {
       props = _.omit(props, ['bbox', 'geometry', 'assets', 'links', 'eo:bands'])
       var links = body.hits.hits[i]._source.links || []
       // add self and collection links
+      let host = ('X-Forwarded-Host' in self.headers ? self.headers['X-Forwarded-Host'] : self.headers['Host'])
+      let api_url = `${self.headers['X-Forwarded-Proto']}${host}`
       let prefix = '/search/stac'
       if (index === 'collections') {
         prefix = '/collections'
-        links['self'] = {'rel': 'self', 'href': `${API_URL}${prefix}?c:id=${props['collection']}`}
+        links['self'] = {'rel': 'self', 'href': `${api_url}${prefix}?c:id=${props['collection']}`}
       } else {
-        links['self'] = {'rel': 'self', 'href': `${API_URL}${prefix}?id=${props['id']}`}
+        links['self'] = {'rel': 'self', 'href': `${api_url}${prefix}?id=${props['id']}`}
         if (props.hasOwnProperty('c:id'))
-          links['collection'] = {'href': `${API_URL}/collections?c:id=${props['c:id']}`}
+          links['collection'] = {'href': `${api_url}/collections?c:id=${props['c:id']}`}
       }
       response.features.push({
         type: 'Feature',
