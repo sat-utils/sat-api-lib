@@ -202,7 +202,7 @@ Search.prototype.search = function (index, callback) {
       var links = body.hits.hits[i]._source.links || []
       // add self and collection links
       let host = ('X-Forwarded-Host' in self.headers ? self.headers['X-Forwarded-Host'] : self.headers['Host'])
-      let api_url = `${self.headers['X-Forwarded-Proto']}${host}`
+      let api_url = `${self.headers['X-Forwarded-Proto']}://${host}`
       let prefix = '/search/stac'
       if (index === 'collections') {
         prefix = '/collections'
@@ -210,7 +210,7 @@ Search.prototype.search = function (index, callback) {
       } else {
         links['self'] = {'rel': 'self', 'href': `${api_url}${prefix}?id=${props['id']}`}
         if (props.hasOwnProperty('c:id'))
-          links['collection'] = {'href': `${api_url}/collections?c:id=${props['c:id']}`}
+          links['collection'] = {'href': `${api_url}/collections/${props['c:id']}/definition`}
       }
       response.features.push({
         type: 'Feature',
