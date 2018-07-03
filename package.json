@@ -1,6 +1,6 @@
 {
   "name": "sat-api-lib",
-  "version": "1.0.0b4",
+  "version": "1.0.0b5",
   "description": "A library for creating a search API of public Satellites metadata using Elasticsearch",
   "main": "index.js",
   "scripts": {
