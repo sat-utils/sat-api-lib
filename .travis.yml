@@ -5,10 +5,10 @@ install:
 - npm install
 script:
 - npm run test
-deploy:
-  provider: npm
-  email: dev@developmentseed.org
-  api_key: ${NPM_API_KEY}
-  on:
-    tags: true
-    repo: sat-utils/sat-api-lib
+#deploy:
+#  provider: npm
+#  email: dev@developmentseed.org
+#  api_key: ${NPM_API_KEY}
+#  on:
+#    tags: true
+#    repo: sat-utils/sat-api-lib
