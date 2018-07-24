@@ -2,7 +2,7 @@
 
 [![npm version](https://badge.fury.io/js/sat-api-lib.svg)](http://badge.fury.io/js/sat-api-lib)
 
-[DEPRECATED] sat-api-lib has been deprecated, all of the modules from it are now included in the [sat-api repostitory](https://github.com/sat-utils/sat-api)
+[DEPRECATED] sat-api-lib has been deprecated, all of the modules from it are now included in the [sat-api repository](https://github.com/sat-utils/sat-api)
 
 
 We use this library for creating sat-api using API Gateway. You can use this API to build a standalone API in other frameworks such as Express
