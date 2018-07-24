@@ -34,7 +34,11 @@ async function connect() {
 
   // use local client
   if (!process.env.ES_HOST) {
-    client = new elasticsearch.Client({host: 'localhost:9200'})
+    if (!process.env.ES_TEST_HOST) {
+      client = new elasticsearch.Client({host: 'localhost:9200'})
+    } else {
+      client = new elasticsearch.Client({host: process.env.ES_TEST_HOST})
+    }
   } else {
     await new Promise((resolve, reject) => AWS.config.getCredentials((err) => {
       if (err) return reject(err)
